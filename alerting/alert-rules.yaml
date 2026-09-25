@@ -2187,3 +2187,57 @@ groups:
           isPaused: false
           notification_settings:
             receiver: NTFY
+        - uid: efzc3ig4g70u8e
+          title: SystemdServiceRestartRate
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: cei7lwvco16o0b
+              model:
+                editorMode: code
+                expr: sum by (instance, name) (increase(systemd_service_restart_total{name!~"[0-9a-f]{64}-.*"}[30m]))
+                instant: true
+                intervalMs: 1000
+                legendFormat: __auto
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: C
+              queryType: expression
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 2
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - C
+                      reducer:
+                        params: []
+                        type: last
+                      type: query
+                datasource:
+                    type: __expr__
+                    uid: __expr__
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: Alerting
+          execErrState: Error
+          annotations:
+            description: '{{ $labels.name }} on {{ $labels.instance }} restarted more than twice in 30m'
+            summary: '{{ $labels.name }} on {{ $labels.instance }} restarted more than twice in 30m'
+          labels:
+            severity: warning
+          isPaused: false
+          notification_settings:
+            receiver: NTFY
