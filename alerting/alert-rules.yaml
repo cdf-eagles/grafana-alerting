@@ -2351,3 +2351,114 @@ groups:
           isPaused: false
           notification_settings:
             receiver: NTFY
+        - uid: bfzodrycrlczkc
+          title: FreeBSDPkgUpdateFailed
+          condition: A
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: cei7lwvco16o0b
+              model:
+                editorMode: code
+                expr: max by (instance) (pkg_update_exit_code) > 0
+                instant: true
+                intervalMs: 1000
+                legendFormat: __auto
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: B
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                            - 0
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params: []
+                      reducer:
+                        params: []
+                        type: avg
+                      type: query
+                datasource:
+                    name: Expression
+                    type: __expr__
+                    uid: __expr__
+                expression: A
+                hide: false
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: B
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          for: 1m
+          annotations:
+            description: 'Root''s 04:00 pkg update exited {{ $value }}. Check: sudo grep pkg-update /var/log/all.log | tail'
+            summary: pkg update failed on {{ $labels.instance }}
+          labels:
+            severity: warning
+          isPaused: false
+          notification_settings:
+            receiver: NTFY
+        - uid: bfzodzab3buv4b
+          title: FreeBSDPkgUpdateStale
+          condition: B
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: cei7lwvco16o0b
+              model:
+                editorMode: code
+                expr: (time() - max by (instance) (pkg_update_last_run_timestamp_seconds)) > 93600 or on (instance) (count by (instance) (node_uname_info{job="node", sysname="FreeBSD"}) unless on (instance) pkg_update_last_run_timestamp_seconds)
+                instant: true
+                intervalMs: 1000
+                legendFormat: __auto
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: B
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                            - 0
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params: []
+                      reducer:
+                        params: []
+                        type: avg
+                      type: query
+                datasource:
+                    name: Expression
+                    type: __expr__
+                    uid: __expr__
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: B
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          for: 15m
+          annotations:
+            description: No scheduled pkg update in 26h, or no pkg_update metric. Check root's crontab and /var/tmp/node_exporter/pkg_update.prom.
+            summary: pkg update has not run on {{ $labels.instance }}
+          labels:
+            severity: warning
+          isPaused: false
+          notification_settings:
+            receiver: NTFY
