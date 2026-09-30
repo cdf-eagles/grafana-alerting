@@ -2583,7 +2583,7 @@ groups:
               datasourceUid: cei7lwvco16o0b
               model:
                 editorMode: code
-                expr: max by (instance) (dnf_offline_unit_failed) > 0
+                expr: max by (instance, unit) (dnf_offline_unit_failed) > 0
                 instant: true
                 intervalMs: 1000
                 legendFormat: __auto
@@ -2620,6 +2620,7 @@ groups:
           execErrState: Error
           for: 1m
           annotations:
+            Unit Name: '{{ $labels.unit }}'
             description: 'dnf-offline-stage.service or dnf-offline-reboot.service is in the failed state on {{ $labels.instance }}. A failed stage means no update was staged; a failed reboot means the slot did not reboot the host. On the host: sudo systemctl --failed --no-pager; sudo journalctl -u dnf-offline-stage.service -u dnf-offline-reboot.service --no-pager. After the fix: sudo systemctl reset-failed dnf-offline-stage.service dnf-offline-reboot.service.'
             summary: dnf offline update unit failed on {{ $labels.instance }}
           labels:
