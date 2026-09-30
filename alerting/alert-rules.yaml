@@ -2462,3 +2462,223 @@ groups:
           isPaused: false
           notification_settings:
             receiver: NTFY
+        - uid: efzs4vlnkg5j4e
+          title: DnfOfflineTransactionProblem
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: cei7lwvco16o0b
+              model:
+                editorMode: code
+                expr: max by (instance) (dnf_offline_transaction_state{state=~"failed|other"}) > 0
+                instant: true
+                intervalMs: 1000
+                legendFormat: __auto
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: C
+              queryType: expression
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - C
+                      reducer:
+                        params: []
+                        type: last
+                      type: query
+                datasource:
+                    type: __expr__
+                    uid: __expr__
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          for: 15m
+          annotations:
+            description: 'dnf5 offline status on {{ $labels.instance }} has reported a transaction that started and did not finish, or output the metrics script does not recognise (state failed or other), for 15 minutes. The staged updates are not being applied. On the host: sudo dnf5 offline status; sudo journalctl -u dnf5-offline-transaction.service --no-pager. After the cause is fixed: sudo dnf5 offline clean.'
+            summary: dnf5 offline update on {{ $labels.instance }} did not finish or is unreadable
+          labels:
+            severity: warning
+          isPaused: false
+          notification_settings:
+            receiver: NTFY
+        - uid: afzs5025f2yv4b
+          title: DnfOfflineStagedTooLong
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: cei7lwvco16o0b
+              model:
+                editorMode: code
+                expr: (time() - max by (instance) (dnf_offline_transaction_since_timestamp_seconds)) > 21600 and on (instance) max by (instance) (dnf_offline_transaction_state{state="ready"}) == 1
+                instant: true
+                intervalMs: 1000
+                legendFormat: __auto
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: C
+              queryType: expression
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - C
+                      reducer:
+                        params: []
+                        type: last
+                      type: query
+                datasource:
+                    type: __expr__
+                    uid: __expr__
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          for: 1m
+          annotations:
+            description: 'A transaction is staged (dnf5 offline status says ready) and is older than 6 hours. Staging runs about 05:00-05:30 UTC and the reboot slot (07:00 podman03, 07:10 podman01, 07:20 podman02 UTC) applies it, so this one missed its slot. On the host: sudo systemctl status dnf-offline-reboot.timer dnf-offline-reboot.service. The service skips the reboot unless dnf5 offline status contains ''dnf5 offline reboot''. To apply by hand: sudo dnf5 offline reboot.'
+            summary: dnf5 offline update on {{ $labels.instance }} staged for over 6 hours
+          labels:
+            severity: warning
+          isPaused: false
+          notification_settings:
+            receiver: NTFY
+        - uid: cfzs533jyhe68c
+          title: DnfOfflineUnitFailed
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: cei7lwvco16o0b
+              model:
+                editorMode: code
+                expr: max by (instance) (dnf_offline_unit_failed) > 0
+                instant: true
+                intervalMs: 1000
+                legendFormat: __auto
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: C
+              queryType: expression
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - C
+                      reducer:
+                        params: []
+                        type: last
+                      type: query
+                datasource:
+                    type: __expr__
+                    uid: __expr__
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          for: 1m
+          annotations:
+            description: 'dnf-offline-stage.service or dnf-offline-reboot.service is in the failed state on {{ $labels.instance }}. A failed stage means no update was staged; a failed reboot means the slot did not reboot the host. On the host: sudo systemctl --failed --no-pager; sudo journalctl -u dnf-offline-stage.service -u dnf-offline-reboot.service --no-pager. After the fix: sudo systemctl reset-failed dnf-offline-stage.service dnf-offline-reboot.service.'
+            summary: dnf offline update unit failed on {{ $labels.instance }}
+          labels:
+            severity: warning
+          isPaused: false
+          notification_settings:
+            receiver: NTFY
+        - uid: cfzs62d9vegw0a
+          title: DnfOfflineStale
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: cei7lwvco16o0b
+              model:
+                editorMode: code
+                expr: (time() - max by (instance) (dnf_offline_stage_last_trigger_timestamp_seconds)) > 93600 or on (instance) (time() - max by (instance) (dnf_offline_metrics_last_run_timestamp_seconds)) > 1800 or on (instance) (count by (instance) (node_uname_info{job="node", sysname="Linux"}) unless on (instance) dnf_offline_metrics_last_run_timestamp_seconds)
+                instant: true
+                intervalMs: 1000
+                legendFormat: __auto
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: C
+              queryType: expression
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - C
+                      reducer:
+                        params: []
+                        type: last
+                      type: query
+                datasource:
+                    type: __expr__
+                    uid: __expr__
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          for: 1m
+          annotations:
+            description: 'One of three causes on {{ $labels.instance }}: dnf-offline-stage.timer has not fired in 26 hours (nothing is being staged); dnf_offline.prom has not been rewritten in 30 minutes (dnf-offline-metrics.timer or its script stopped); or the host reports no dnf_offline metrics at all (script never ran, or node_exporter runs without --collector.textfile.directory). On the host: sudo systemctl list-timers ''dnf-offline-*''; sudo systemctl status dnf-offline-metrics.service; ls -l /var/lib/node_exporter/textfile/.'
+            summary: dnf offline update staging or its metrics are stale on {{ $labels.instance }}
+          labels:
+            severity: warning
+          isPaused: false
+          notification_settings:
+            receiver: NTFY
