@@ -554,6 +554,61 @@ groups:
           isPaused: false
           notification_settings:
             receiver: NTFY
+        - uid: cg00qhw2jyyv4a
+          title: DelugeMetricsMissing
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: cei7lwvco16o0b
+              model:
+                editorMode: code
+                expr: count(deluge_info{job="deluge"})
+                instant: true
+                intervalMs: 1000
+                legendFormat: __auto
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: C
+              queryType: expression
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 1
+                        type: lt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - C
+                      reducer:
+                        params: []
+                        type: last
+                      type: query
+                datasource:
+                    type: __expr__
+                    uid: __expr__
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: Alerting
+          execErrState: Error
+          for: 5m
+          annotations:
+            description: 'count(deluge_info{job="deluge"}) absent or below 1 for 5m: exporter stopped, or its Deluge login is refused (item 72)'
+            summary: deluge-exporter is not producing metrics
+          labels:
+            severity: warning
+          isPaused: false
+          notification_settings:
+            receiver: NTFY
     - orgId: 2
       name: instance
       folder: Hardware
