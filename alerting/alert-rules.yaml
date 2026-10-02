@@ -239,7 +239,7 @@ groups:
               datasourceUid: cei7lwvco16o0b
               model:
                 editorMode: code
-                expr: (mysql_global_status_innodb_buffer_pool_read_requests - mysql_global_status_innodb_buffer_pool_reads) / mysql_global_status_innodb_buffer_pool_read_requests
+                expr: '   (mysql_global_status_innodb_buffer_pool_read_requests{instance!="mariadb02.sleem.net"} - mysql_global_status_innodb_buffer_pool_reads{instance!="mariadb02.sleem.net"}) / mysql_global_status_innodb_buffer_pool_read_requests{instance!="mariadb02.sleem.net"}'
                 instant: true
                 intervalMs: 1000
                 legendFormat: __auto
