@@ -609,6 +609,61 @@ groups:
           isPaused: false
           notification_settings:
             receiver: NTFY
+        - uid: eg04qhm907shsa
+          title: TailscaledTargetDown
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: cei7lwvco16o0b
+              model:
+                editorMode: code
+                expr: up{job="tailscaled"}
+                instant: true
+                intervalMs: 1000
+                legendFormat: __auto
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: C
+              queryType: expression
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 1
+                        type: lt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - C
+                      reducer:
+                        params: []
+                        type: last
+                      type: query
+                datasource:
+                    type: __expr__
+                    uid: __expr__
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: Alerting
+          execErrState: Error
+          for: 5m
+          annotations:
+            description: 'up{job="tailscaled"} is 0 on {{ $labels.instance }} for 5m: tailscaled is down, its web client is off (tailscale set --webclient), or the address in prometheus/tailscale/main.yml is stale'
+            summary: tailscaled metrics on {{ $labels.instance }} are not scraped
+          labels:
+            severity: critical
+          isPaused: false
+          notification_settings:
+            receiver: NTFY
     - orgId: 2
       name: instance
       folder: Hardware
