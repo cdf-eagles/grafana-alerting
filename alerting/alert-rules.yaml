@@ -2793,3 +2793,113 @@ groups:
           isPaused: false
           notification_settings:
             receiver: NTFY
+        - uid: dg067ckwf124gd
+          title: FreebsdImagePullFailed
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: cei7lwvco16o0b
+              model:
+                editorMode: code
+                expr: freebsd_image_pull_exit_code
+                instant: true
+                intervalMs: 1000
+                legendFormat: __auto
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: C
+              queryType: expression
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - C
+                      reducer:
+                        params: []
+                        type: last
+                      type: query
+                datasource:
+                    type: __expr__
+                    uid: __expr__
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          for: 5m
+          annotations:
+            description: 'freebsd-image-pull.sh exited 1 on its last run on {{ $labels.instance }}, so no new ZFS-root image was installed; the last verified image is still in /vm/.img. Cron retries daily on days 16-20: a failure on day 16 clears when a later run succeeds, and a failure on day 20 stays firing until fixed. On the host: sudo grep freebsd-image-pull /var/log/messages | tail -20 (the failing step is the last line; "gh:" lines are the attestation check); sudo ls -l /vm/.img /vm/.tmp /var/db/freebsd-image-pull. Common causes: attestation or sha256 mismatch, less than 15 GiB free in /vm, /vm/.tmp on a different filesystem from /vm/.img, the bucket unreachable. After the cause is fixed: sudo /usr/local/bin/freebsd-image-pull.sh (add -n first for a dry run).'
+            summary: Monthly FreeBSD image pull failed on {{ $labels.instance }}
+          labels:
+            severity: warning
+          isPaused: false
+          notification_settings:
+            receiver: NTFY
+        - uid: ag067gd801ekge
+          title: FreebsdImageStale
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: cei7lwvco16o0b
+              model:
+                editorMode: code
+                expr: time() - max by (instance) (freebsd_image_zfs_newest_timestamp_seconds)
+                instant: true
+                intervalMs: 1000
+                legendFormat: __auto
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: C
+              queryType: expression
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 3.1968e+06
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - C
+                      reducer:
+                        params: []
+                        type: last
+                      type: query
+                datasource:
+                    type: __expr__
+                    uid: __expr__
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: Alerting
+          execErrState: Error
+          for: 5m
+          annotations:
+            description: 'The newest image recorded by freebsd-image-pull on soundwave is more than 37 days old, going by the date in its file name, or the metric is missing. A monthly build is published on the 15th and cron pulls it on days 16-20, so a monthly pull was missed, cron is not running the job, or every run is failing (see FreebsdImagePullFailed). On soundwave: sudo ls -l /vm/.img; sudo cat /var/db/freebsd-image-pull/installed; sudo grep freebsd-image-pull /var/log/messages | tail -20; sudo grep freebsd-image-pull /var/log/cron | tail -5; cat /var/tmp/node_exporter/freebsd_image_pull.prom. If the log says "up to date", upstream has not published a newer build: check the workflow runs in cdf-eagles/freebsd-cloud-img. Otherwise pull by hand: sudo /usr/local/bin/freebsd-image-pull.sh.'
+            summary: No new FreeBSD ZFS image installed on soundwave for over 37 days
+          labels:
+            severity: warning
+          isPaused: false
+          notification_settings:
+            receiver: NTFY
