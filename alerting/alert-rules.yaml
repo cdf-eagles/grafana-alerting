@@ -2903,3 +2903,278 @@ groups:
           isPaused: false
           notification_settings:
             receiver: NTFY
+        - uid: cg0mdpp7as8hsd
+          title: OsEol70d
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: cei7lwvco16o0b
+              model:
+                editorMode: code
+                expr: min by (host, product, cycle) (os_eol_days_remaining) < 70
+                instant: true
+                intervalMs: 1000
+                legendFormat: __auto
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: C
+              queryType: expression
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - C
+                      reducer:
+                        params: []
+                        type: last
+                      type: query
+                datasource:
+                    type: __expr__
+                    uid: __expr__
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          for: 1h
+          annotations:
+            description: 'Operating system end of life in under 70 days: two four-week patch windows plus two weeks to prepare. Schedule the release upgrade (guests first, soundwave last) in the next window. Source: os_eol_days_remaining from os-eol-check.py on soundwave; dates from endoflife.date.'
+            summary: '{{ $labels.host }} runs {{ $labels.product }} {{ $labels.cycle }}, end of life in {{ $values.A | printf "%.0f" }} days'
+          labels:
+            severity: info
+          isPaused: false
+          notification_settings:
+            receiver: NTFY
+        - uid: bg0mdtima6xa8d
+          title: OsEol30d
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: cei7lwvco16o0b
+              model:
+                editorMode: code
+                expr: min by (host, product, cycle) (os_eol_days_remaining) < 30
+                instant: true
+                intervalMs: 1000
+                legendFormat: __auto
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: C
+              queryType: expression
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - C
+                      reducer:
+                        params: []
+                        type: last
+                      type: query
+                datasource:
+                    type: __expr__
+                    uid: __expr__
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          for: 1h
+          annotations:
+            description: 'Operating system end of life in under 30 days: one patch window left. The upgrade must be booked for the coming window; after this date the host stops receiving security patches.'
+            summary: '{{ $labels.host }} runs {{ $labels.product }} {{ $labels.cycle }}, end of life in {{ $values.A | printf "%.0f" }} days'
+          labels:
+            severity: warning
+          isPaused: false
+          notification_settings:
+            receiver: NTFY
+        - uid: dg0mdvewm9g5cc
+          title: OsEol7d
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: cei7lwvco16o0b
+              model:
+                editorMode: code
+                expr: min by (host, product, cycle) (os_eol_days_remaining) < 7
+                instant: true
+                intervalMs: 1000
+                legendFormat: __auto
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: C
+              queryType: expression
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - C
+                      reducer:
+                        params: []
+                        type: last
+                      type: query
+                datasource:
+                    type: __expr__
+                    uid: __expr__
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          for: 1h
+          annotations:
+            description: Operating system end of life in under 7 days, or already past. The host will run unpatched; upgrade now or isolate it. FreeBSD 15.0 passed its end of life on 2026-09-30 and the first sign was a failed image build three days later.
+            summary: '{{ $labels.host }} runs {{ $labels.product }} {{ $labels.cycle }}, end of life in {{ $values.A | printf "%.0f" }} days'
+          labels:
+            severity: critical
+          isPaused: false
+          notification_settings:
+            receiver: NTFY
+        - uid: dg0mdxppwkp34e
+          title: OsEolCycleUnknown
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: cei7lwvco16o0b
+              model:
+                editorMode: code
+                expr: os_eol_cycle_unknown == 1
+                instant: true
+                intervalMs: 1000
+                legendFormat: __auto
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: C
+              queryType: expression
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - C
+                      reducer:
+                        params: []
+                        type: last
+                      type: query
+                datasource:
+                    type: __expr__
+                    uid: __expr__
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          for: 1h
+          annotations:
+            description: endoflife.date lists no such release for this host's operating system, so no end-of-life date can be computed. Usually a release newer than the site's data, or a product renamed; check the product and cycle labels against https://endoflife.date/api/<product>.json and fix the product map in roles/soundwave/vars/main.yaml if needed. Never read this as "no end of life".
+            summary: '{{ $labels.host }} runs {{ $labels.product }} {{ $labels.cycle }}, end of life in {{ $values.A | printf "%.0f" }} days'
+          labels:
+            severity: warning
+          isPaused: false
+          notification_settings:
+            receiver: NTFY
+        - uid: fg0mdz91c4h6od
+          title: OsEolCheckFailed
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: cei7lwvco16o0b
+              model:
+                editorMode: code
+                expr: os_eol_check_success == 0 or (time() - os_eol_check_last_run_timestamp_seconds) > 2 * 86400
+                instant: true
+                intervalMs: 1000
+                legendFormat: __auto
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: C
+              queryType: expression
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - C
+                      reducer:
+                        params: []
+                        type: last
+                      type: query
+                datasource:
+                    type: __expr__
+                    uid: __expr__
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          for: 1h
+          annotations:
+            description: The daily check on soundwave failed or has not run for two days, so every OsEol* gauge is stale. Read /var/log/all.log on soundwave for os-eol-check lines (Prometheus unreachable, endoflife.date unreachable, or the cron.d entry gone), then run sudo /usr/local/bin/os-eol-check.py by hand.
+            summary: '{{ $labels.host }} runs {{ $labels.product }} {{ $labels.cycle }}, end of life in {{ $values.A | printf "%.0f" }} days'
+          labels:
+            severity: warning
+          isPaused: false
+          notification_settings:
+            receiver: NTFY
