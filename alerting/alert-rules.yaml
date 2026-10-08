@@ -664,6 +664,114 @@ groups:
           isPaused: false
           notification_settings:
             receiver: NTFY
+        - uid: dg0n8dskrtclcc
+          title: MariaDBRestoreTestFailed
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: cei7lwvco16o0b
+              model:
+                editorMode: code
+                expr: mariadb_restore_test_success
+                instant: true
+                intervalMs: 1000
+                legendFormat: __auto
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: C
+              queryType: expression
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 1
+                        type: lt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - C
+                      reducer:
+                        params: []
+                        type: last
+                      type: query
+                datasource:
+                    type: __expr__
+                    uid: __expr__
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: Alerting
+          execErrState: Error
+          annotations:
+            description: The weekly restore of mariadb01's newest backup chain on mariadb02 failed at least one check. Read mariadb_restore_test_check{name=...} to see which (0 is failed or not run), and the mariadb-restore-test lines in /var/log/all.log on mariadb02 for the reason. mariadb01's backups cannot be assumed restorable until this clears.
+            summary: mariadb02 restore test failed
+          labels:
+            severity: critical
+          isPaused: false
+          notification_settings:
+            receiver: NTFY
+        - uid: eg0n8ltxovg8wa
+          title: MariaDBRestoreTestStale
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: cei7lwvco16o0b
+              model:
+                editorMode: code
+                expr: time() - mariadb_restore_test_last_run_timestamp_seconds
+                instant: true
+                intervalMs: 1000
+                legendFormat: __auto
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: C
+              queryType: expression
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 777600
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - C
+                      reducer:
+                        params: []
+                        type: last
+                      type: query
+                datasource:
+                    type: __expr__
+                    uid: __expr__
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: Alerting
+          execErrState: Error
+          annotations:
+            description: The weekly restore test writes mariadb_restore_test_last_run_timestamp_seconds every Monday at 10:30; it is more than 9 days old or missing. Check /usr/local/etc/cron.d/mariadb-restore-test and the cron log on mariadb02, whether /backup is mounted, and whether another run still holds /var/run/mariadb-restore-test.lock.
+            summary: mariadb02 restore test has not run for 9 days
+          labels:
+            severity: warning
+          isPaused: false
+          notification_settings:
+            receiver: NTFY
     - orgId: 2
       name: instance
       folder: Hardware
@@ -3134,7 +3242,7 @@ groups:
               datasourceUid: cei7lwvco16o0b
               model:
                 editorMode: code
-                expr: os_eol_check_success == 0 or (time() - os_eol_check_last_run_timestamp_seconds) > 2 * 86400
+                expr: os_eol_check_success
                 instant: true
                 intervalMs: 1000
                 legendFormat: __auto
@@ -3148,7 +3256,62 @@ groups:
                 conditions:
                     - evaluator:
                         params:
-                            - 0
+                            - 1
+                        type: lt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - C
+                      reducer:
+                        params: []
+                        type: last
+                      type: query
+                datasource:
+                    type: __expr__
+                    uid: __expr__
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: Alerting
+          execErrState: Error
+          for: 1h
+          annotations:
+            description: The daily check on soundwave failed or has not run for two days, so every OsEol* gauge is stale. Read /var/log/all.log on soundwave for os-eol-check lines (Prometheus unreachable, endoflife.date unreachable, or the cron.d entry gone), then run sudo /usr/local/bin/os-eol-check.py by hand.
+            summary: '{{ $labels.host }} runs {{ $labels.product }} {{ $labels.cycle }}, end of life in {{ $values.A | printf "%.0f" }} days'
+          labels:
+            severity: warning
+          isPaused: false
+          notification_settings:
+            receiver: NTFY
+        - uid: fg0n9eckq0dtsf
+          title: OsEolCheckStale
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: cei7lwvco16o0b
+              model:
+                editorMode: code
+                expr: time() - os_eol_check_last_run_timestamp_seconds
+                instant: true
+                intervalMs: 1000
+                legendFormat: __auto
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: C
+              queryType: expression
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 172800
                         type: gt
                       operator:
                         type: and
@@ -3167,12 +3330,12 @@ groups:
                 maxDataPoints: 43200
                 refId: C
                 type: threshold
-          noDataState: OK
+          noDataState: Alerting
           execErrState: Error
           for: 1h
           annotations:
-            description: The daily check on soundwave failed or has not run for two days, so every OsEol* gauge is stale. Read /var/log/all.log on soundwave for os-eol-check lines (Prometheus unreachable, endoflife.date unreachable, or the cron.d entry gone), then run sudo /usr/local/bin/os-eol-check.py by hand.
-            summary: '{{ $labels.host }} runs {{ $labels.product }} {{ $labels.cycle }}, end of life in {{ $values.A | printf "%.0f" }} days'
+            description: The daily os-eol-check job on soundwave (cron.d at 06:15, /usr/local/bin/os-eol-check.py) has not updated os_eol_check_last_run_timestamp_seconds for {{ humanizeDuration $values.A.Value }}, against a 2-day (172800 s) limit. The textfile metrics in /var/tmp/node_exporter/os_eol.prom are stale or missing, so the OsEol70d, OsEol30d and OsEol7d threshold rules are reading old data or none at all. Check that the cron entry ran (grep os-eol-check /var/log/all.log on soundwave), that node_exporter on soundwave is being scraped, and that the .prom file exists. No data on this rule means the metric is missing entirely, which is treated as alerting.
+            summary: OS end-of-life check has not reported for over 2 days
           labels:
             severity: warning
           isPaused: false
