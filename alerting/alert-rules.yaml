@@ -3341,3 +3341,57 @@ groups:
           isPaused: false
           notification_settings:
             receiver: NTFY
+        - uid: dg0nz4d0p5tz4a
+          title: AlloyWalCheckpointFailed
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: cei7lwvco16o0b
+              model:
+                editorMode: code
+                expr: increase(prometheus_remote_write_wal_checkpoint_creations_failed_total[6h])
+                instant: true
+                intervalMs: 1000
+                legendFormat: __auto
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: C
+              queryType: expression
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - C
+                      reducer:
+                        params: []
+                        type: last
+                      type: query
+                datasource:
+                    type: __expr__
+                    uid: __expr__
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: NoData
+          execErrState: Error
+          annotations:
+            description: 'Alloy''s remote-write WAL on {{ $labels.instance }} failed {{ $values.A.Value }} checkpoint(s) in the last 6 hours, so the WAL is not truncating; left alone it grows without bound and the WAL watcher burns CPU re-listing it (backlog item 185). On the host: sudo grep -i checkpoint /var/log/all.log | tail -5 (the error text names the cause; "too many open files" means segments exceed kern.maxfilesperproc); sudo ls /var/alloy/prometheus.remote_write.default/wal | wc -l; sysctl kern.maxfilesperproc. Fix: sudo monit unmonitor alloy; sudo service alloy stop; sudo mv /var/alloy/prometheus.remote_write.default/wal /var/alloy/prometheus.remote_write.default/wal.aside; sudo service alloy start; sudo monit monitor alloy. Remote write must show 0 pending samples first, or the moved-aside samples are lost.'
+            summary: Alloy WAL checkpoint failing on {{ $labels.instance }}
+          labels:
+            severity: warning
+          isPaused: false
+          notification_settings:
+            receiver: NTFY
