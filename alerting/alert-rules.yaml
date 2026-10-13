@@ -948,7 +948,7 @@ groups:
           execErrState: Error
           for: 15m
           annotations:
-            description: 'up for job {{ $labels.job }}, instance {{ $labels.instance }} was in Mimir within the last day and has been absent for 15m: the scrape config lost the target, the Alloy or Prometheus that scrapes it stopped writing, or Mimir is rejecting its samples. Query the same series on the prometheus datasource to tell a scrape fault from a remote-write fault. If the target was removed on purpose, silence this instance for 24h. The alert clears by itself one day after the series disappeared, which does not mean it recovered.'
+            description: 'Up for job {{ $labels.job }}, instance {{ $labels.instance }} was in Mimir within the last day and has been absent for 15m: the scrape config lost the target, the Alloy or Prometheus that scrapes it stopped writing, or Mimir is rejecting its samples. Query the same series on the prometheus datasource to tell a scrape fault from a remote-write fault. If the target was removed on purpose, silence this instance for 24h. The alert clears by itself one day after the series disappeared, which does not mean it recovered.'
             summary: '{{ $labels.job }} on {{ $labels.instance }} stopped reporting to Mimir'
           labels:
             severity: warning
