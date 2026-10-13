@@ -11,10 +11,22 @@ contactPoints:
             httpMethod: POST
             message: '{{ template "ntfy.message" . }}'
             payload:
-                template: '{{ template "webhook.default.payload" . }}'
+                template: '{{ coll.Dict "title" (tmpl.Exec "ntfy.title" .) "message" (tmpl.Exec "ntfy.message" .) | data.ToJSON }}'
             title: '{{ template "ntfy.title" . }}'
             url: https://ntfy.cybris.net/grafana?template=yes&title=%7B%7B.title%7D%7D&message=%7B%7B.message%7D%7D&priority=5&tags=grafana%2Cwarning
           disableResolveMessage: false
+    - orgId: 2
+      name: NTFY-minimal
+      receivers:
+        - uid: ag14h8999ys5ce
+          type: webhook
+          settings:
+            authorization_credentials: '[REDACTED]'
+            authorization_scheme: Bearer
+            payload:
+                template: '{{ len .Alerts.Firing }} Grafana notification(s) failed. Explore (loki): {instance="podman01.sleem.net", unit="grafana-grafana.service"} |~ `^logger=ngalert\.notifier` |= "Notify for alerts failed"'
+            url: https://ntfy.cybris.net/grafana?title=Grafana%20notification%20delivery%20failed&priority=5&tags=grafana,rotating_light
+          disableResolveMessage: true
     - orgId: 2
       name: email receiver
       receivers:

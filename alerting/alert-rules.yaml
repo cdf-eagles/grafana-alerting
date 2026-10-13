@@ -956,6 +956,69 @@ groups:
           notification_settings:
             receiver: NTFY
     - orgId: 2
+      name: notifier
+      folder: Applications
+      interval: 1m
+      rules:
+        - uid: eg14hrascrxtsa
+          title: GrafanaNotifyFailed
+          condition: C
+          data:
+            - refId: A
+              queryType: instant
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: cefqyqv6j9c00e
+              model:
+                datasource:
+                    type: loki
+                    uid: cefqyqv6j9c00e
+                editorMode: code
+                expr: sum(count_over_time({instance="podman01.sleem.net", unit="grafana-grafana.service"} |~ `^logger=ngalert\.notifier` |= "Notify for alerts failed" [10m]))
+                instant: true
+                intervalMs: 1000
+                maxDataPoints: 43200
+                queryType: instant
+                refId: A
+            - refId: C
+              queryType: expression
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - C
+                      reducer:
+                        params: []
+                        type: last
+                      type: query
+                datasource:
+                    type: __expr__
+                    uid: __expr__
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          annotations:
+            description: 'Grafana''s notifier logged "Notify for alerts failed" {{ printf "%.0f" $values.A.Value }} times in 10 minutes, so at least one alert group never reached its contact point. Read the err= field in Explore (loki): {instance="podman01.sleem.net", unit="grafana-grafana.service"} |~ `^logger=ngalert\.notifier` |= "Notify for alerts failed". Code 40041 means ntfy refused the rendered size (NTFY Notifications, item 197); 401/403 means the podman01 token.'
+            summary: '{{ printf "%.0f" $values.A.Value }} Grafana notification(s) failed to deliver in the last 10 minutes'
+          isPaused: false
+          notification_settings:
+            receiver: NTFY-minimal
+            group_by:
+                - grafana_folder
+                - alertname
+    - orgId: 2
       name: instance
       folder: Hardware
       interval: 5m
