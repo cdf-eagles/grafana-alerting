@@ -1,6 +1,757 @@
 apiVersion: 1
 groups:
     - orgId: 2
+      name: zfs
+      folder: OS/alerts.yml
+      interval: 1m
+      rules:
+        - uid: 7dcf2100-b818-599a-847a-0c09ef7e5af8
+          title: ZfsPoolNotOnline
+          condition: threshold
+          data:
+            - refId: query
+              queryType: prometheus
+              relativeTimeRange:
+                from: 660
+                to: 60
+              datasourceUid: cei7lwvco16o0b
+              model:
+                datasource:
+                    type: prometheus
+                    uid: cei7lwvco16o0b
+                expr: zfs_pool_state{state="ONLINE"} == 0
+                instant: true
+                intervalMs: 1000
+                maxDataPoints: 43200
+                range: false
+                refId: query
+            - refId: prometheus_math
+              queryType: math
+              datasourceUid: __expr__
+              model:
+                datasource:
+                    IsPrunable: false
+                    access: ""
+                    apiVersion: ""
+                    basicAuth: false
+                    basicAuthUser: ""
+                    created: "0001-01-01T00:00:00Z"
+                    database: ""
+                    id: -100
+                    isDefault: false
+                    jsonData: {}
+                    name: __expr__
+                    readOnly: false
+                    secureJsonData: {}
+                    type: __expr__
+                    uid: __expr__
+                    updated: "0001-01-01T00:00:00Z"
+                    url: ""
+                    user: ""
+                    withCredentials: false
+                expression: is_number($query) || is_nan($query) || is_inf($query)
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: prometheus_math
+                type: math
+            - refId: threshold
+              queryType: threshold
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                datasource:
+                    IsPrunable: false
+                    access: ""
+                    apiVersion: ""
+                    basicAuth: false
+                    basicAuthUser: ""
+                    created: "0001-01-01T00:00:00Z"
+                    database: ""
+                    id: -100
+                    isDefault: false
+                    jsonData: {}
+                    name: __expr__
+                    readOnly: false
+                    secureJsonData: {}
+                    type: __expr__
+                    uid: __expr__
+                    updated: "0001-01-01T00:00:00Z"
+                    url: ""
+                    user: ""
+                    withCredentials: false
+                expression: prometheus_math
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: threshold
+                type: threshold
+          noDataState: OK
+          execErrState: OK
+          for: 1m
+          annotations:
+            summary: ZFS pool {{ $labels.pool }} on {{ $labels.instance }} is not ONLINE
+          labels:
+            __converted_prometheus_rule__: "true"
+            severity: critical
+          isPaused: false
+          missing_series_evals_to_resolve: 1
+        - uid: 3d53af96-98b6-594f-bbb1-3d76a473acb5
+          title: ZfsVdevErrors
+          condition: threshold
+          data:
+            - refId: query
+              queryType: prometheus
+              relativeTimeRange:
+                from: 660
+                to: 60
+              datasourceUid: cei7lwvco16o0b
+              model:
+                datasource:
+                    type: prometheus
+                    uid: cei7lwvco16o0b
+                expr: (zfs_vdev_read_errors + zfs_vdev_write_errors + zfs_vdev_checksum_errors) > 0
+                instant: true
+                intervalMs: 1000
+                maxDataPoints: 43200
+                range: false
+                refId: query
+            - refId: prometheus_math
+              queryType: math
+              datasourceUid: __expr__
+              model:
+                datasource:
+                    IsPrunable: false
+                    access: ""
+                    apiVersion: ""
+                    basicAuth: false
+                    basicAuthUser: ""
+                    created: "0001-01-01T00:00:00Z"
+                    database: ""
+                    id: -100
+                    isDefault: false
+                    jsonData: {}
+                    name: __expr__
+                    readOnly: false
+                    secureJsonData: {}
+                    type: __expr__
+                    uid: __expr__
+                    updated: "0001-01-01T00:00:00Z"
+                    url: ""
+                    user: ""
+                    withCredentials: false
+                expression: is_number($query) || is_nan($query) || is_inf($query)
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: prometheus_math
+                type: math
+            - refId: threshold
+              queryType: threshold
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                datasource:
+                    IsPrunable: false
+                    access: ""
+                    apiVersion: ""
+                    basicAuth: false
+                    basicAuthUser: ""
+                    created: "0001-01-01T00:00:00Z"
+                    database: ""
+                    id: -100
+                    isDefault: false
+                    jsonData: {}
+                    name: __expr__
+                    readOnly: false
+                    secureJsonData: {}
+                    type: __expr__
+                    uid: __expr__
+                    updated: "0001-01-01T00:00:00Z"
+                    url: ""
+                    user: ""
+                    withCredentials: false
+                expression: prometheus_math
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: threshold
+                type: threshold
+          noDataState: OK
+          execErrState: OK
+          for: 5m
+          annotations:
+            summary: vdev {{ $labels.vdev }} ({{ $labels.disk }}) in pool {{ $labels.pool }} has I/O or checksum errors
+          labels:
+            __converted_prometheus_rule__: "true"
+            severity: warning
+          isPaused: false
+          missing_series_evals_to_resolve: 1
+        - uid: 7e4a3261-d612-5ff8-bde3-0ca3cd6b1a50
+          title: ZfsPoolDataErrors
+          condition: threshold
+          data:
+            - refId: query
+              queryType: prometheus
+              relativeTimeRange:
+                from: 660
+                to: 60
+              datasourceUid: cei7lwvco16o0b
+              model:
+                datasource:
+                    type: prometheus
+                    uid: cei7lwvco16o0b
+                expr: zfs_pool_data_errors > 0
+                instant: true
+                intervalMs: 1000
+                maxDataPoints: 43200
+                range: false
+                refId: query
+            - refId: prometheus_math
+              queryType: math
+              datasourceUid: __expr__
+              model:
+                datasource:
+                    IsPrunable: false
+                    access: ""
+                    apiVersion: ""
+                    basicAuth: false
+                    basicAuthUser: ""
+                    created: "0001-01-01T00:00:00Z"
+                    database: ""
+                    id: -100
+                    isDefault: false
+                    jsonData: {}
+                    name: __expr__
+                    readOnly: false
+                    secureJsonData: {}
+                    type: __expr__
+                    uid: __expr__
+                    updated: "0001-01-01T00:00:00Z"
+                    url: ""
+                    user: ""
+                    withCredentials: false
+                expression: is_number($query) || is_nan($query) || is_inf($query)
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: prometheus_math
+                type: math
+            - refId: threshold
+              queryType: threshold
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                datasource:
+                    IsPrunable: false
+                    access: ""
+                    apiVersion: ""
+                    basicAuth: false
+                    basicAuthUser: ""
+                    created: "0001-01-01T00:00:00Z"
+                    database: ""
+                    id: -100
+                    isDefault: false
+                    jsonData: {}
+                    name: __expr__
+                    readOnly: false
+                    secureJsonData: {}
+                    type: __expr__
+                    uid: __expr__
+                    updated: "0001-01-01T00:00:00Z"
+                    url: ""
+                    user: ""
+                    withCredentials: false
+                expression: prometheus_math
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: threshold
+                type: threshold
+          noDataState: OK
+          execErrState: OK
+          annotations:
+            summary: ZFS pool {{ $labels.pool }} reports permanent data errors
+          labels:
+            __converted_prometheus_rule__: "true"
+            severity: critical
+          isPaused: false
+          missing_series_evals_to_resolve: 1
+        - uid: 2395e880-4c2b-55b1-9640-a9c9922e1789
+          title: ZfsPoolNearlyFull
+          condition: threshold
+          data:
+            - refId: query
+              queryType: prometheus
+              relativeTimeRange:
+                from: 660
+                to: 60
+              datasourceUid: cei7lwvco16o0b
+              model:
+                datasource:
+                    type: prometheus
+                    uid: cei7lwvco16o0b
+                expr: zfs_pool_capacity_ratio > 0.85
+                instant: true
+                intervalMs: 1000
+                maxDataPoints: 43200
+                range: false
+                refId: query
+            - refId: prometheus_math
+              queryType: math
+              datasourceUid: __expr__
+              model:
+                datasource:
+                    IsPrunable: false
+                    access: ""
+                    apiVersion: ""
+                    basicAuth: false
+                    basicAuthUser: ""
+                    created: "0001-01-01T00:00:00Z"
+                    database: ""
+                    id: -100
+                    isDefault: false
+                    jsonData: {}
+                    name: __expr__
+                    readOnly: false
+                    secureJsonData: {}
+                    type: __expr__
+                    uid: __expr__
+                    updated: "0001-01-01T00:00:00Z"
+                    url: ""
+                    user: ""
+                    withCredentials: false
+                expression: is_number($query) || is_nan($query) || is_inf($query)
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: prometheus_math
+                type: math
+            - refId: threshold
+              queryType: threshold
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                datasource:
+                    IsPrunable: false
+                    access: ""
+                    apiVersion: ""
+                    basicAuth: false
+                    basicAuthUser: ""
+                    created: "0001-01-01T00:00:00Z"
+                    database: ""
+                    id: -100
+                    isDefault: false
+                    jsonData: {}
+                    name: __expr__
+                    readOnly: false
+                    secureJsonData: {}
+                    type: __expr__
+                    uid: __expr__
+                    updated: "0001-01-01T00:00:00Z"
+                    url: ""
+                    user: ""
+                    withCredentials: false
+                expression: prometheus_math
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: threshold
+                type: threshold
+          noDataState: OK
+          execErrState: OK
+          for: 30m
+          annotations:
+            summary: ZFS pool {{ $labels.pool }} is {{ $value | humanizePercentage }} full
+          labels:
+            __converted_prometheus_rule__: "true"
+            severity: warning
+          isPaused: false
+          missing_series_evals_to_resolve: 1
+        - uid: bda0e60b-5f25-55fb-8da8-aaabb2545f40
+          title: ZfsScrubOverdue
+          condition: threshold
+          data:
+            - refId: query
+              queryType: prometheus
+              relativeTimeRange:
+                from: 660
+                to: 60
+              datasourceUid: cei7lwvco16o0b
+              model:
+                datasource:
+                    type: prometheus
+                    uid: cei7lwvco16o0b
+                expr: |-
+                    (time() - zfs_pool_scan_end_time_seconds > 35 * 86400
+                      and on (instance, pool) zfs_pool_scan_state{function="SCRUB"} == 1)
+                    or on (instance, pool) (zfs_pool_state{state="ONLINE"} == 1
+                      unless on (instance, pool) zfs_pool_scan_state{function="SCRUB", state="FINISHED"} == 1
+                      unless on (instance, pool) zfs_pool_scan_state{state="SCANNING"} == 1)
+                instant: true
+                intervalMs: 1000
+                maxDataPoints: 43200
+                range: false
+                refId: query
+            - refId: prometheus_math
+              queryType: math
+              datasourceUid: __expr__
+              model:
+                datasource:
+                    IsPrunable: false
+                    access: ""
+                    apiVersion: ""
+                    basicAuth: false
+                    basicAuthUser: ""
+                    created: "0001-01-01T00:00:00Z"
+                    database: ""
+                    id: -100
+                    isDefault: false
+                    jsonData: {}
+                    name: __expr__
+                    readOnly: false
+                    secureJsonData: {}
+                    type: __expr__
+                    uid: __expr__
+                    updated: "0001-01-01T00:00:00Z"
+                    url: ""
+                    user: ""
+                    withCredentials: false
+                expression: is_number($query) || is_nan($query) || is_inf($query)
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: prometheus_math
+                type: math
+            - refId: threshold
+              queryType: threshold
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                datasource:
+                    IsPrunable: false
+                    access: ""
+                    apiVersion: ""
+                    basicAuth: false
+                    basicAuthUser: ""
+                    created: "0001-01-01T00:00:00Z"
+                    database: ""
+                    id: -100
+                    isDefault: false
+                    jsonData: {}
+                    name: __expr__
+                    readOnly: false
+                    secureJsonData: {}
+                    type: __expr__
+                    uid: __expr__
+                    updated: "0001-01-01T00:00:00Z"
+                    url: ""
+                    user: ""
+                    withCredentials: false
+                expression: prometheus_math
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: threshold
+                type: threshold
+          noDataState: OK
+          execErrState: OK
+          for: 1h
+          annotations:
+            summary: ZFS pool {{ $labels.pool }} has no completed scrub in the last 35 days
+          labels:
+            __converted_prometheus_rule__: "true"
+            severity: warning
+          isPaused: false
+          missing_series_evals_to_resolve: 1
+        - uid: af5d4324-b631-5ff5-9d7c-82191a8439e2
+          title: SmartDiskFailing
+          condition: threshold
+          data:
+            - refId: query
+              queryType: prometheus
+              relativeTimeRange:
+                from: 660
+                to: 60
+              datasourceUid: cei7lwvco16o0b
+              model:
+                datasource:
+                    type: prometheus
+                    uid: cei7lwvco16o0b
+                expr: zfs_smart_healthy == 0 or zfs_smart_exit_status_bit{bit=~"3|4"} == 1
+                instant: true
+                intervalMs: 1000
+                maxDataPoints: 43200
+                range: false
+                refId: query
+            - refId: prometheus_math
+              queryType: math
+              datasourceUid: __expr__
+              model:
+                datasource:
+                    IsPrunable: false
+                    access: ""
+                    apiVersion: ""
+                    basicAuth: false
+                    basicAuthUser: ""
+                    created: "0001-01-01T00:00:00Z"
+                    database: ""
+                    id: -100
+                    isDefault: false
+                    jsonData: {}
+                    name: __expr__
+                    readOnly: false
+                    secureJsonData: {}
+                    type: __expr__
+                    uid: __expr__
+                    updated: "0001-01-01T00:00:00Z"
+                    url: ""
+                    user: ""
+                    withCredentials: false
+                expression: is_number($query) || is_nan($query) || is_inf($query)
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: prometheus_math
+                type: math
+            - refId: threshold
+              queryType: threshold
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                datasource:
+                    IsPrunable: false
+                    access: ""
+                    apiVersion: ""
+                    basicAuth: false
+                    basicAuthUser: ""
+                    created: "0001-01-01T00:00:00Z"
+                    database: ""
+                    id: -100
+                    isDefault: false
+                    jsonData: {}
+                    name: __expr__
+                    readOnly: false
+                    secureJsonData: {}
+                    type: __expr__
+                    uid: __expr__
+                    updated: "0001-01-01T00:00:00Z"
+                    url: ""
+                    user: ""
+                    withCredentials: false
+                expression: prometheus_math
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: threshold
+                type: threshold
+          noDataState: OK
+          execErrState: OK
+          annotations:
+            summary: SMART reports device {{ $labels.device }} on {{ $labels.instance }} as failing
+          labels:
+            __converted_prometheus_rule__: "true"
+            severity: critical
+          isPaused: false
+          missing_series_evals_to_resolve: 1
+        - uid: d0b4c87c-f4da-567d-9ad6-97033a3d8e3b
+          title: SmartErrorLogGrowing
+          condition: threshold
+          data:
+            - refId: query
+              queryType: prometheus
+              relativeTimeRange:
+                from: 660
+                to: 60
+              datasourceUid: cei7lwvco16o0b
+              model:
+                datasource:
+                    type: prometheus
+                    uid: cei7lwvco16o0b
+                expr: increase(zfs_smart_error_log_entries[1d]) > 0
+                instant: true
+                intervalMs: 1000
+                maxDataPoints: 43200
+                range: false
+                refId: query
+            - refId: prometheus_math
+              queryType: math
+              datasourceUid: __expr__
+              model:
+                datasource:
+                    IsPrunable: false
+                    access: ""
+                    apiVersion: ""
+                    basicAuth: false
+                    basicAuthUser: ""
+                    created: "0001-01-01T00:00:00Z"
+                    database: ""
+                    id: -100
+                    isDefault: false
+                    jsonData: {}
+                    name: __expr__
+                    readOnly: false
+                    secureJsonData: {}
+                    type: __expr__
+                    uid: __expr__
+                    updated: "0001-01-01T00:00:00Z"
+                    url: ""
+                    user: ""
+                    withCredentials: false
+                expression: is_number($query) || is_nan($query) || is_inf($query)
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: prometheus_math
+                type: math
+            - refId: threshold
+              queryType: threshold
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                datasource:
+                    IsPrunable: false
+                    access: ""
+                    apiVersion: ""
+                    basicAuth: false
+                    basicAuthUser: ""
+                    created: "0001-01-01T00:00:00Z"
+                    database: ""
+                    id: -100
+                    isDefault: false
+                    jsonData: {}
+                    name: __expr__
+                    readOnly: false
+                    secureJsonData: {}
+                    type: __expr__
+                    uid: __expr__
+                    updated: "0001-01-01T00:00:00Z"
+                    url: ""
+                    user: ""
+                    withCredentials: false
+                expression: prometheus_math
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: threshold
+                type: threshold
+          noDataState: OK
+          execErrState: OK
+          annotations:
+            summary: The SMART error log of {{ $labels.device }} gained entries in the last day
+          labels:
+            __converted_prometheus_rule__: "true"
+            severity: warning
+          isPaused: false
+          missing_series_evals_to_resolve: 1
+        - uid: e1c0a794-bda6-56bc-810a-a100357e2b2a
+          title: ZfsExporterCollectorFailing
+          condition: threshold
+          data:
+            - refId: query
+              queryType: prometheus
+              relativeTimeRange:
+                from: 660
+                to: 60
+              datasourceUid: cei7lwvco16o0b
+              model:
+                datasource:
+                    type: prometheus
+                    uid: cei7lwvco16o0b
+                expr: zfs_exporter_collector_up == 0
+                instant: true
+                intervalMs: 1000
+                maxDataPoints: 43200
+                range: false
+                refId: query
+            - refId: prometheus_math
+              queryType: math
+              datasourceUid: __expr__
+              model:
+                datasource:
+                    IsPrunable: false
+                    access: ""
+                    apiVersion: ""
+                    basicAuth: false
+                    basicAuthUser: ""
+                    created: "0001-01-01T00:00:00Z"
+                    database: ""
+                    id: -100
+                    isDefault: false
+                    jsonData: {}
+                    name: __expr__
+                    readOnly: false
+                    secureJsonData: {}
+                    type: __expr__
+                    uid: __expr__
+                    updated: "0001-01-01T00:00:00Z"
+                    url: ""
+                    user: ""
+                    withCredentials: false
+                expression: is_number($query) || is_nan($query) || is_inf($query)
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: prometheus_math
+                type: math
+            - refId: threshold
+              queryType: threshold
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                datasource:
+                    IsPrunable: false
+                    access: ""
+                    apiVersion: ""
+                    basicAuth: false
+                    basicAuthUser: ""
+                    created: "0001-01-01T00:00:00Z"
+                    database: ""
+                    id: -100
+                    isDefault: false
+                    jsonData: {}
+                    name: __expr__
+                    readOnly: false
+                    secureJsonData: {}
+                    type: __expr__
+                    uid: __expr__
+                    updated: "0001-01-01T00:00:00Z"
+                    url: ""
+                    user: ""
+                    withCredentials: false
+                expression: prometheus_math
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: threshold
+                type: threshold
+          noDataState: OK
+          execErrState: OK
+          for: 15m
+          annotations:
+            summary: zpool-status-exporter collector {{ $labels.collector }} on {{ $labels.instance }} is failing
+          labels:
+            __converted_prometheus_rule__: "true"
+            severity: warning
+          isPaused: false
+          missing_series_evals_to_resolve: 1
+    - orgId: 2
       name: instance
       folder: Applications
       interval: 5m
@@ -2023,61 +2774,6 @@ groups:
           isPaused: false
           notification_settings:
             receiver: NTFY
-        - uid: efls0vuwg622of
-          title: ZPOOL VDEV ERROR
-          condition: C
-          data:
-            - refId: A
-              relativeTimeRange:
-                from: 300
-                to: 0
-              datasourceUid: cei7lwvco16o0b
-              model:
-                editorMode: code
-                expr: zfsprom_disk_status{type='disk', zfsprom_disk_status!~"ONLINE|HEALTHY"}
-                instant: true
-                intervalMs: 1000
-                legendFormat: __auto
-                maxDataPoints: 43200
-                range: false
-                refId: A
-            - refId: C
-              queryType: expression
-              datasourceUid: __expr__
-              model:
-                conditions:
-                    - evaluator:
-                        params:
-                            - 0
-                        type: gt
-                      operator:
-                        type: and
-                      query:
-                        params:
-                            - C
-                      reducer:
-                        params: []
-                        type: last
-                      type: query
-                datasource:
-                    type: __expr__
-                    uid: __expr__
-                expression: A
-                intervalMs: 1000
-                maxDataPoints: 43200
-                refId: C
-                type: threshold
-          noDataState: OK
-          execErrState: Error
-          for: 5m
-          annotations:
-            description: ZPOOL VDEV Error {{ $labels.instance }} {{ $labels.zfsprom_disk_status }} {{ $labels.path }}
-            summary: ZPOOL VDEV Error {{ $labels.instance }} {{ $labels.zfsprom_disk_status }} {{ $labels.path }}
-          labels:
-            severity: critical
-          isPaused: false
-          notification_settings:
-            receiver: NTFY
     - orgId: 2
       name: instance
       folder: OS
@@ -2617,95 +3313,6 @@ groups:
           isPaused: false
           notification_settings:
             receiver: NTFY
-        - uid: ffl3ycyjw3j7kb
-          title: ZPool Error
-          condition: C
-          data:
-            - refId: A
-              relativeTimeRange:
-                from: 600
-                to: 0
-              datasourceUid: cei7lwvco16o0b
-              model:
-                editorMode: code
-                expr: zpool_health
-                format: time_series
-                instant: true
-                intervalMs: 1000
-                legendFormat: __auto
-                maxDataPoints: 43200
-                range: false
-                refId: A
-            - refId: C
-              queryType: expression
-              datasourceUid: __expr__
-              model:
-                conditions:
-                    - evaluator:
-                        params:
-                            - 0
-                        type: gt
-                      operator:
-                        type: and
-                      query:
-                        params:
-                            - C
-                      reducer:
-                        params: []
-                        type: last
-                      type: query
-                datasource:
-                    type: __expr__
-                    uid: __expr__
-                expression: A
-                intervalMs: 1000
-                maxDataPoints: 43200
-                refId: C
-                type: threshold
-            - refId: B
-              datasourceUid: __expr__
-              model:
-                conditions:
-                    - evaluator:
-                        params:
-                            - 0
-                        type: lt
-                      operator:
-                        type: and
-                      query:
-                        params: []
-                      reducer:
-                        params: []
-                        type: avg
-                      type: query
-                datasource:
-                    name: Expression
-                    type: __expr__
-                    uid: __expr__
-                expression: A
-                hide: false
-                intervalMs: 1000
-                maxDataPoints: 43200
-                refId: B
-                type: threshold
-          noDataState: OK
-          execErrState: Error
-          for: 1m
-          annotations:
-            description: |-
-                ZPool Error
-                DEGRADED = 1
-                FAULTED = 2
-                OFFLINE = 3
-                UNAVAIL = 4
-                REMOVEED = 5
-            summary: ZPool Error {{ $labels.pool }}
-          labels:
-            severity: critical
-          isPaused: false
-          notification_settings:
-            receiver: NTFY
-          missing_series_evals_to_resolve: 3
         - uid: dflmamdh9x0xsb
           title: Podman Container Status
           condition: C
