@@ -752,6 +752,66 @@ groups:
           isPaused: false
           missing_series_evals_to_resolve: 1
     - orgId: 2
+      name: control-plane
+      folder: Applications
+      interval: 1m
+      rules:
+        - uid: cg1jair19k16of
+          title: OpenBaoSealedOrDown
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 300
+                to: 0
+              datasourceUid: cei7lwvco16o0b
+              model:
+                editorMode: code
+                expr: probe_success{job="blackbox_http", instance="https://vault.sleem.net/v1/sys/health"}
+                instant: true
+                intervalMs: 1000
+                legendFormat: __auto
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: C
+              queryType: expression
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 1
+                        type: lt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - C
+                      reducer:
+                        params: []
+                        type: last
+                      type: query
+                datasource:
+                    type: __expr__
+                    uid: __expr__
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: Alerting
+          execErrState: Error
+          for: 2m
+          annotations:
+            description: 'The blackbox probe of https://vault.sleem.net/v1/sys/health has failed for 2 minutes. OpenBao answers 503 when sealed and 501 when uninitialized; a timeout or 502 means openbao-podman03 or httpd-podman03 is down. On podman03: sudo podman ps --filter name=openbao-podman03; sudo journalctl -u openbao-podman03.service -n 50 --no-pager; curl -s http://127.0.0.1:8200/v1/sys/seal-status. A sealed node should unseal itself from the static key on restart: sudo systemctl restart openbao-podman03.service. If it stays sealed, check the openbao-unseal Podman secret. No data means the probe series vanished, treated as alerting.'
+            summary: OpenBao on vault.sleem.net is sealed, uninitialized or unreachable
+          labels:
+            severity: critical
+          isPaused: false
+          notification_settings:
+            receiver: NTFY
+    - orgId: 2
       name: instance
       folder: Applications
       interval: 5m
@@ -1812,61 +1872,6 @@ groups:
             summary: No successful OpenBao raft snapshot on {{ $labels.instance }} for over 26 hours
           labels:
             severity: warning
-          isPaused: false
-          notification_settings:
-            receiver: NTFY
-        - uid: cg1jair19k16of
-          title: OpenBaoSealedOrDown
-          condition: C
-          data:
-            - refId: A
-              relativeTimeRange:
-                from: 300
-                to: 0
-              datasourceUid: cei7lwvco16o0b
-              model:
-                editorMode: code
-                expr: probe_success{job="blackbox_http", instance="https://vault.sleem.net/v1/sys/health"}
-                instant: true
-                intervalMs: 1000
-                legendFormat: __auto
-                maxDataPoints: 43200
-                range: false
-                refId: A
-            - refId: C
-              queryType: expression
-              datasourceUid: __expr__
-              model:
-                conditions:
-                    - evaluator:
-                        params:
-                            - 1
-                        type: lt
-                      operator:
-                        type: and
-                      query:
-                        params:
-                            - C
-                      reducer:
-                        params: []
-                        type: last
-                      type: query
-                datasource:
-                    type: __expr__
-                    uid: __expr__
-                expression: A
-                intervalMs: 1000
-                maxDataPoints: 43200
-                refId: C
-                type: threshold
-          noDataState: Alerting
-          execErrState: Error
-          for: 5m
-          annotations:
-            description: 'The blackbox probe of https://vault.sleem.net/v1/sys/health has failed for 5 minutes. OpenBao answers 503 when sealed and 501 when uninitialized; a timeout or 502 means openbao-podman03 or httpd-podman03 is down. On podman03: sudo podman ps --filter name=openbao-podman03; sudo journalctl -u openbao-podman03.service -n 50 --no-pager; curl -s http://127.0.0.1:8200/v1/sys/seal-status. A sealed node should unseal itself from the static key on restart: sudo systemctl restart openbao-podman03.service. If it stays sealed, check the openbao-unseal Podman secret. No data means the probe series vanished, treated as alerting.'
-            summary: OpenBao on vault.sleem.net is sealed, uninitialized or unreachable
-          labels:
-            severity: critical
           isPaused: false
           notification_settings:
             receiver: NTFY
