@@ -1886,7 +1886,7 @@ groups:
               datasourceUid: cei7lwvco16o0b
               model:
                 editorMode: code
-                expr: openbao_copy_drift_items{mount="sleem"}
+                expr: '  openbao_copy_drift_items{mount=~"sleem|cybris"} or absent(openbao_copy_drift_items{mount="sleem"}) or absent(openbao_copy_drift_items{mount="cybris"})'
                 instant: true
                 intervalMs: 1000
                 legendFormat: __auto
@@ -1922,7 +1922,7 @@ groups:
           noDataState: Alerting
           execErrState: Error
           annotations:
-            description: 'The daily drift check (openbao-copy-check.timer, 04:15 UTC) found copies in sleem/ that are missing, unmarked, or older than their 1Password item, or items the service account cannot read. On podman03: sudo journalctl -u openbao-copy-check.service -n 70 --no-pager | grep -v ''^OK ''. A changed item: run scripts/op-to-openbao.py copy on the Mac. A FAIL on every item: the service-account token in /etc/openbao/copy-check.env is expired or revoked. An item not found: it is outside the Infrastructure vault. No data means the textfile metric is missing, treated as alerting.'
+            description: 'The daily drift check (openbao-copy-check.timer, 04:15 UTC) found copies in {{ $labels.mount }}/ that are missing, unmarked, or older than their 1Password item, or items the service account cannot read. On podman03: sudo journalctl -u openbao-copy-check.service -n 70 --no-pager | grep -v ''^OK ''. A changed item: run scripts/op-to-openbao.py copy on the Mac. A FAIL on every item: the service-account token in /etc/openbao/copy-check.env is expired or revoked. An item not found: it is outside the Infrastructure vault. No data means the textfile metric is missing, treated as alerting.'
             summary: '{{ $values.A.Value }} OpenBao copies are stale or missing on {{ $labels.instance }}'
           labels:
             severity: warning
@@ -1940,7 +1940,7 @@ groups:
               datasourceUid: cei7lwvco16o0b
               model:
                 editorMode: code
-                expr: time() - openbao_copy_check_timestamp_seconds{mount="sleem"}
+                expr: (time() - openbao_copy_check_timestamp_seconds{mount=~"sleem|cybris"}) or (absent(openbao_copy_check_timestamp_seconds{mount="sleem"}) * 1e9) or (absent(openbao_copy_check_timestamp_seconds{mount="cybris"}) * 1e9)
                 instant: true
                 intervalMs: 1000
                 legendFormat: __auto
