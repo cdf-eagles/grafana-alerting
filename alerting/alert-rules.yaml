@@ -1864,12 +1864,121 @@ groups:
                 maxDataPoints: 43200
                 refId: C
                 type: threshold
-          noDataState: NoData
+          noDataState: Alerting
           execErrState: Error
           for: 15m
           annotations:
             description: 'openbao_raft_snapshot_last_success_timestamp_seconds is {{ humanizeDuration $values.A.Value }} old, against a 26-hour limit; the timer runs daily at 03:30 UTC. On podman03: sudo systemctl list-timers openbao-raft-snapshot.timer; sudo journalctl -u openbao-raft-snapshot.service -n 30 --no-pager. No data means the metric is missing or podman03''s node exporter is not scraped, treated as alerting.'
             summary: No successful OpenBao raft snapshot on {{ $labels.instance }} for over 26 hours
+          labels:
+            severity: warning
+          isPaused: false
+          notification_settings:
+            receiver: NTFY
+        - uid: eg1k6bdpnknpcc
+          title: OpenBaoCopyDrift
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: cei7lwvco16o0b
+              model:
+                editorMode: code
+                expr: openbao_copy_drift_items{mount="sleem"}
+                instant: true
+                intervalMs: 1000
+                legendFormat: __auto
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: C
+              queryType: expression
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - C
+                      reducer:
+                        params: []
+                        type: last
+                      type: query
+                datasource:
+                    type: __expr__
+                    uid: __expr__
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: Alerting
+          execErrState: Error
+          annotations:
+            description: 'The daily drift check (openbao-copy-check.timer, 04:15 UTC) found copies in sleem/ that are missing, unmarked, or older than their 1Password item, or items the service account cannot read. On podman03: sudo journalctl -u openbao-copy-check.service -n 70 --no-pager | grep -v ''^OK ''. A changed item: run scripts/op-to-openbao.py copy on the Mac. A FAIL on every item: the service-account token in /etc/openbao/copy-check.env is expired or revoked. An item not found: it is outside the Infrastructure vault. No data means the textfile metric is missing, treated as alerting.'
+            summary: '{{ $values.A.Value }} OpenBao copies are stale or missing on {{ $labels.instance }}'
+          labels:
+            severity: warning
+          isPaused: false
+          notification_settings:
+            receiver: NTFY
+        - uid: fg1k6f7jevq4ge
+          title: OpenBaoCopyCheckStale
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: cei7lwvco16o0b
+              model:
+                editorMode: code
+                expr: time() - openbao_copy_check_timestamp_seconds{mount="sleem"}
+                instant: true
+                intervalMs: 1000
+                legendFormat: __auto
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: C
+              queryType: expression
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 93600
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - C
+                      reducer:
+                        params: []
+                        type: last
+                      type: query
+                datasource:
+                    type: __expr__
+                    uid: __expr__
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: Alerting
+          execErrState: Error
+          for: 15m
+          annotations:
+            description: 'openbao_copy_check_timestamp_seconds is {{ humanizeDuration $values.A.Value }} old, against a 26-hour limit; the timer runs daily at 04:15 UTC. On podman03: sudo systemctl list-timers openbao-copy-check.timer; sudo journalctl -u openbao-copy-check.service -n 30 --no-pager. Common causes: OpenBao sealed or down, the copy-check AppRole secret ID, or 1Password unreachable. No data means the metric is missing or podman03''s node exporter is not scraped, treated as alerting.'
+            summary: No 1Password drift check on {{ $labels.instance }} for over 26 hours
           labels:
             severity: warning
           isPaused: false
