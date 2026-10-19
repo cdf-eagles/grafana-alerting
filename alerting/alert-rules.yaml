@@ -3162,6 +3162,63 @@ groups:
           isPaused: false
           notification_settings:
             receiver: NTFY
+        - uid: bg1pa83g84flsf
+          title: UniFiHardwareFault
+          condition: C
+          data:
+            - refId: A
+              queryType: instant
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: cefqyqv6j9c00e
+              model:
+                datasource:
+                    type: loki
+                    uid: cefqyqv6j9c00e
+                editorMode: code
+                expr: 'sum by (hostname) (count_over_time({job="integrations/syslog", hostname=~"unifi-.+"} |~ "PoE firmware check failed|PSE init failed|occurred reading thermal sensor|LTE firmware crash: App ver" [10m]))'
+                hide: false
+                instant: true
+                intervalMs: 1000
+                maxDataPoints: 43200
+                queryType: instant
+                refId: A
+            - refId: C
+              queryType: expression
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - C
+                      reducer:
+                        params: []
+                        type: last
+                      type: query
+                datasource:
+                    type: __expr__
+                    uid: __expr__
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          keepFiringFor: 2h
+          annotations:
+            description: '{{ $labels.hostname }} logged {{ printf "%.0f" $values.A.Value }} hardware-fault line(s) in 10 minutes. PoE firmware check failed: the switch''s PoE controller hung and was reset (unifi-sw01''s known fault, item 286). PSE init failed: the PoE power-sourcing chip failed to start after a reset. occurred reading thermal sensor: sensor reads failing, usually during that hang. LTE firmware crash: the U-LTE-Pro modem firmware crashed (one line per crash). Read the lines in Explore (loki): {job="integrations/syslog", hostname="{{ $labels.hostname }}"} |~ "PoE firmware|PSE init|thermal sensor|LTE firmware crash". Stays firing 2h after the last line, so one bad evening is one notification. Covers every UniFi device; add new fault strings here, never a per-device rule (item 294).'
+            summary: UniFi hardware fault on {{ $labels.hostname }}
+          isPaused: false
+          notification_settings:
+            receiver: NTFY
     - orgId: 2
       name: instance
       folder: OS
