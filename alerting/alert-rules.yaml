@@ -2623,7 +2623,7 @@ groups:
               datasourceUid: cei7lwvco16o0b
               model:
                 editorMode: code
-                expr: nvidia_gpu_temperature_celsius
+                expr: nvidia_smi_temperature_gpu * on(instance, uuid) group_left(name) nvidia_smi_gpu_info
                 instant: true
                 intervalMs: 1000
                 legendFormat: __auto
@@ -2678,7 +2678,7 @@ groups:
               datasourceUid: cei7lwvco16o0b
               model:
                 editorMode: code
-                expr: nvidia_gpu_temperature_celsius
+                expr: nvidia_smi_temperature_gpu * on(instance, uuid) group_left(name) nvidia_smi_gpu_info
                 instant: true
                 intervalMs: 1000
                 legendFormat: __auto
@@ -2733,7 +2733,7 @@ groups:
               datasourceUid: cei7lwvco16o0b
               model:
                 editorMode: code
-                expr: nvidia_gpu_power_usage_milliwatts / 1000
+                expr: nvidia_smi_power_draw_watts * on(instance, uuid) group_left(name) nvidia_smi_gpu_info
                 instant: true
                 intervalMs: 1000
                 legendFormat: __auto
@@ -2788,7 +2788,7 @@ groups:
               datasourceUid: cei7lwvco16o0b
               model:
                 editorMode: code
-                expr: nvidia_gpu_power_usage_milliwatts / 1000
+                expr: nvidia_smi_power_draw_watts * on(instance, uuid) group_left(name) nvidia_smi_gpu_info
                 instant: true
                 intervalMs: 1000
                 legendFormat: __auto
@@ -2843,7 +2843,7 @@ groups:
               datasourceUid: cei7lwvco16o0b
               model:
                 editorMode: code
-                expr: nvidia_gpu_fanspeed_percent
+                expr: nvidia_smi_fan_speed_ratio * on(instance, uuid) group_left(name) nvidia_smi_gpu_info
                 instant: true
                 intervalMs: 1000
                 legendFormat: __auto
@@ -2856,7 +2856,7 @@ groups:
                 conditions:
                     - evaluator:
                         params:
-                            - 75
+                            - 0.75
                         type: gt
                       operator:
                         type: and
@@ -2898,7 +2898,7 @@ groups:
               datasourceUid: cei7lwvco16o0b
               model:
                 editorMode: code
-                expr: nvidia_gpu_fanspeed_percent
+                expr: nvidia_smi_fan_speed_ratio * on(instance, uuid) group_left(name) nvidia_smi_gpu_info
                 instant: true
                 intervalMs: 1000
                 legendFormat: __auto
@@ -2911,7 +2911,7 @@ groups:
                 conditions:
                     - evaluator:
                         params:
-                            - 85
+                            - 0.85
                         type: gt
                       operator:
                         type: and
@@ -2953,7 +2953,7 @@ groups:
               datasourceUid: cei7lwvco16o0b
               model:
                 editorMode: code
-                expr: (nvidia_gpu_memory_used_bytes / nvidia_gpu_memory_total_bytes) * 100
+                expr: (nvidia_smi_memory_used_bytes / nvidia_smi_memory_total_bytes) * 100 * on(instance, uuid) group_left(name) nvidia_smi_gpu_info
                 instant: true
                 intervalMs: 1000
                 legendFormat: __auto
@@ -3008,7 +3008,7 @@ groups:
               datasourceUid: cei7lwvco16o0b
               model:
                 editorMode: code
-                expr: (nvidia_gpu_memory_used_bytes / nvidia_gpu_memory_total_bytes) * 100
+                expr: (nvidia_smi_memory_used_bytes / nvidia_smi_memory_total_bytes) * 100 * on(instance, uuid) group_left(name) nvidia_smi_gpu_info
                 instant: true
                 intervalMs: 1000
                 legendFormat: __auto
@@ -3049,6 +3049,116 @@ groups:
                 {{ $labels.instance }}:{{ $labels.name }}
           labels:
             severity: critical
+          isPaused: false
+          notification_settings:
+            receiver: NTFY
+        - uid: ag1nf6uelze9sb
+          title: NVIDIA GPU Processes Missing
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: cei7lwvco16o0b
+              model:
+                editorMode: code
+                expr: (max by (instance, uuid) (nvidia_smi_memory_used_bytes) > 1e9) unless on(instance, uuid) (count by (instance, uuid) (nvidia_smi_compute_app_info) > 0)
+                instant: true
+                intervalMs: 1000
+                legendFormat: __auto
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: C
+              queryType: expression
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - C
+                      reducer:
+                        params: []
+                        type: last
+                      type: query
+                datasource:
+                    type: __expr__
+                    uid: __expr__
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          for: 15m
+          annotations:
+            description: 'The GPU holds over 1 GB but nvidia_smi_compute_app_info is empty, so the per-process panel is blank. The exporter cannot see the processes (see item 316: container PID namespace / nvidia-smi query). Check nvidia-smi on podman02 against the exporter''s /metrics.'
+            summary: GPU on {{ $labels.instance }} holds memory but reports no processes
+          labels:
+            severity: warning
+          isPaused: false
+          notification_settings:
+            receiver: NTFY
+        - uid: cg1nf9zox7a4gb
+          title: NVIDIA GPU Series Vanished
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: cei7lwvco16o0b
+              model:
+                editorMode: code
+                expr: group by (instance, uuid, metric) (max_over_time(label_replace({__name__=~"nvidia_smi_(temperature_gpu|power_draw_watts|fan_speed_ratio|memory_used_bytes|memory_total_bytes)", job="nvidia_gpu_exporter"}, "metric", "$1", "__name__", "(.+)")[1d:5m])) unless on(instance, uuid, metric) group by (instance, uuid, metric) (label_replace({__name__=~"nvidia_smi_(temperature_gpu|power_draw_watts|fan_speed_ratio|memory_used_bytes|memory_total_bytes)", job="nvidia_gpu_exporter"}, "metric", "$1", "__name__", "(.+)"))
+                instant: true
+                intervalMs: 1000
+                legendFormat: __auto
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: C
+              queryType: expression
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - C
+                      reducer:
+                        params: []
+                        type: last
+                      type: query
+                datasource:
+                    type: __expr__
+                    uid: __expr__
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          for: 15m
+          annotations:
+            description: 'This GPU series was in Mimir within the last day and has been missing for 15m: nvidia-smi failed, the field went [N/A], or the exporter stopped. ScrapeTargetVanished covers the exporter''s up series itself. Clears by itself one day after the series disappeared, which does not mean it recovered.'
+            summary: '{{ $labels.metric }} on {{ $labels.instance }} stopped reporting to Mimir'
+          labels:
+            severity: warning
           isPaused: false
           notification_settings:
             receiver: NTFY
