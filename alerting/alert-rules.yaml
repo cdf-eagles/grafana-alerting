@@ -1777,7 +1777,7 @@ groups:
               datasourceUid: cei7lwvco16o0b
               model:
                 editorMode: code
-                expr: openbao_raft_snapshot_last_ok
+                expr: last_over_time(openbao_raft_snapshot_last_ok[15m])
                 instant: true
                 intervalMs: 1000
                 legendFormat: __auto
@@ -1831,7 +1831,7 @@ groups:
               datasourceUid: cei7lwvco16o0b
               model:
                 editorMode: code
-                expr: time() - openbao_raft_snapshot_last_success_timestamp_seconds
+                expr: time() - last_over_time(openbao_raft_snapshot_last_success_timestamp_seconds[15m])
                 instant: true
                 intervalMs: 1000
                 legendFormat: __auto
@@ -1886,7 +1886,7 @@ groups:
               datasourceUid: cei7lwvco16o0b
               model:
                 editorMode: code
-                expr: '  openbao_copy_drift_items{mount=~"sleem|cybris"} or absent(openbao_copy_drift_items{mount="sleem"}) or absent(openbao_copy_drift_items{mount="cybris"})'
+                expr: last_over_time(openbao_copy_drift_items{mount=~"sleem|cybris"}[15m]) or absent_over_time(openbao_copy_drift_items{mount="sleem"}[15m]) or absent_over_time(openbao_copy_drift_items{mount="cybris"}[15m])
                 instant: true
                 intervalMs: 1000
                 legendFormat: __auto
@@ -1940,7 +1940,10 @@ groups:
               datasourceUid: cei7lwvco16o0b
               model:
                 editorMode: code
-                expr: (time() - openbao_copy_check_timestamp_seconds{mount=~"sleem|cybris"}) or (absent(openbao_copy_check_timestamp_seconds{mount="sleem"}) * 1e9) or (absent(openbao_copy_check_timestamp_seconds{mount="cybris"}) * 1e9)
+                expr: |-
+                    time() - last_over_time(openbao_copy_check_timestamp_seconds{mount=~"sleem|cybris"}[15m])
+                      or (absent_over_time(openbao_copy_check_timestamp_seconds{mount="sleem"}[15m]) * 1e9)
+                      or (absent_over_time(openbao_copy_check_timestamp_seconds{mount="cybris"}[15m]) * 1e9)
                 instant: true
                 intervalMs: 1000
                 legendFormat: __auto
