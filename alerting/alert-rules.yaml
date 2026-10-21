@@ -3664,12 +3664,17 @@ groups:
           execErrState: Error
           for: 1m
           annotations:
-            summary: Filesystem Usage > 80% for {{ $labels.instance }}
+            description: Filesystem Usage > 80% for {{ $labels.name }}
+            summary: Filesystem Usage > 80% for {{ $labels.name }}
           labels:
             severity: warning
           isPaused: false
           notification_settings:
             receiver: NTFY
+            group_by:
+                - grafana_folder
+                - alertname
+                - name
         - uid: aet06xb5xedc0f
           title: FilesystemOverThreshhold-Critical
           condition: C
@@ -3717,12 +3722,17 @@ groups:
           execErrState: Error
           for: 1m
           annotations:
-            summary: Filesystem Usage > 90% for {{ $labels.instance }}
+            description: Filesystem Usage > 90% for {{ $labels.name }}
+            summary: Filesystem Usage > 90% for {{ $labels.name }}
           labels:
             severity: critical
           isPaused: false
           notification_settings:
             receiver: NTFY
+            group_by:
+                - grafana_folder
+                - alertname
+                - name
         - uid: afhsq441bim80d
           title: MemoryOverThreshhold-FreeBSD-Warn
           condition: C
@@ -3877,13 +3887,17 @@ groups:
           execErrState: Error
           for: 1m
           annotations:
-            description: Podman Container Status {{ $labels.instance }}
-            summary: Podman Container Status {{ $labels.instance }}
+            description: Podman Container Status {{ $labels.name }}
+            summary: Podman Container Status {{ $labels.name }}
           labels:
             severity: warning
           isPaused: false
           notification_settings:
             receiver: NTFY
+            group_by:
+                - grafana_folder
+                - alertname
+                - name
         - uid: efzc3ig4g70u8e
           title: SystemdServiceRestartRate
           condition: C
