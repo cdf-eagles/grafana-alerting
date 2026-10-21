@@ -3232,6 +3232,64 @@ groups:
                 - alertname
                 - grafana_folder
                 - hostname
+        - uid: bg1uspojzf0n4c
+          title: UniFiRebooted
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 300
+                to: 0
+              datasourceUid: cei7lwvco16o0b
+              model:
+                editorMode: code
+                expr: sum by (name) (resets(unpoller_device_uptime_seconds[15m]))
+                instant: true
+                intervalMs: 1000
+                legendFormat: __auto
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: C
+              queryType: expression
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - C
+                      reducer:
+                        params: []
+                        type: last
+                      type: query
+                datasource:
+                    type: __expr__
+                    uid: __expr__
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          annotations:
+            description: 'Uptime dropped within 15 minutes (planned reboot, crash or power loss). Uptime now: {{ $values.A.Value }} resets. Check unpoller_device_uptime_seconds in mimir.'
+            summary: UniFi device {{ $labels.name }} rebooted
+          labels:
+            severity: warning
+          isPaused: false
+          notification_settings:
+            receiver: NTFY
+            group_by:
+                - alertname
+                - grafana_folder
+                - name
     - orgId: 2
       name: instance
       folder: OS
