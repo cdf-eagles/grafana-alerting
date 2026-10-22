@@ -3664,8 +3664,8 @@ groups:
           execErrState: Error
           for: 1m
           annotations:
-            description: Filesystem Usage > 80% for {{ $labels.name }}
-            summary: Filesystem Usage > 80% for {{ $labels.name }}
+            description: '{{ $labels.mountpoint }} on {{ $labels.instance }} ({{ $labels.device }}, {{ $labels.fstype }}) is {{ printf "%.1f" $values.A.Value }}% used, over the 80% threshold.'
+            summary: Filesystem usage > 80% on {{ $labels.instance }}:{{ $labels.mountpoint }} ({{ printf "%.1f" $values.A.Value }}% used)
           labels:
             severity: warning
           isPaused: false
@@ -3686,7 +3686,7 @@ groups:
               datasourceUid: cei7lwvco16o0b
               model:
                 editorMode: code
-                expr: (100 - (node_filesystem_avail_bytes{fstype!~"udf|nfs.*|msdosfs|devfs|fdescfs|devfs|linprocfs|linsysfs"} * 100 / node_filesystem_size_bytes{fstype!="udf|nfs.*|msdosfs|devfs|fdescfs|devfs|linprocfs|linsysfs"}) > 90) * on(instance, job) group_left(nodename) node_uname_info{nodename=~".+", job="integrations/unix"}
+                expr: (100 - (node_filesystem_avail_bytes{fstype!~"udf|nfs.*|msdosfs|devfs|fdescfs|devfs|linprocfs|linsysfs"} * 100 / node_filesystem_size_bytes{fstype!~"udf|nfs.*|msdosfs|devfs|fdescfs|devfs|linprocfs|linsysfs"}) > 90) * on(instance, job) group_left(nodename) node_uname_info{nodename=~".+", job="integrations/unix"}
                 instant: true
                 intervalMs: 1000
                 legendFormat: __auto
@@ -3722,8 +3722,8 @@ groups:
           execErrState: Error
           for: 1m
           annotations:
-            description: Filesystem Usage > 90% for {{ $labels.name }}
-            summary: Filesystem Usage > 90% for {{ $labels.name }}
+            description: '{{ $labels.mountpoint }} on {{ $labels.instance }} ({{ $labels.device }}, {{ $labels.fstype }}) is {{ printf "%.1f" $values.A.Value }}% used, over the 90% threshold.'
+            summary: Filesystem usage > 90% on {{ $labels.instance }}:{{ $labels.mountpoint }} ({{ printf "%.1f" $values.A.Value }}% used)
           labels:
             severity: critical
           isPaused: false
