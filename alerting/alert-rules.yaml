@@ -3243,7 +3243,7 @@ groups:
               datasourceUid: cei7lwvco16o0b
               model:
                 editorMode: code
-                expr: sum by (name) (resets(unpoller_device_uptime_seconds[15m]))
+                expr: max by (name) (unpoller_device_uptime_seconds > 0 < 900)
                 instant: true
                 intervalMs: 1000
                 legendFormat: __auto
@@ -3278,8 +3278,9 @@ groups:
                 type: threshold
           noDataState: OK
           execErrState: Error
+          for: 5m
           annotations:
-            description: 'Uptime dropped within 15 minutes (planned reboot, crash or power loss). Uptime now: {{ $values.A.Value }} resets. Check unpoller_device_uptime_seconds in mimir.'
+            description: 'Uptime is under 15 minutes (planned reboot, crash or power loss). Uptime now: {{ printf "%.0f" $values.A.Value }}s. Zero readings are excluded and requires 5m pending so the controller’s brief fake uptimes during an app restart don’t fire it, so a UniFi Network app restart on unifi-dm01 does not fire this. Check unpoller_device_uptime_seconds in mimir.'
             summary: UniFi device {{ $labels.name }} rebooted
           labels:
             severity: warning
