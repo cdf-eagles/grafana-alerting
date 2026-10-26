@@ -3307,7 +3307,7 @@ groups:
               datasourceUid: cei7lwvco16o0b
               model:
                 editorMode: code
-                expr: max by (instance) (pkg_audit_vulnerable_packages) > 0
+                expr: max by (instance) (pkg_audit_fixable_packages or pkg_audit_vulnerable_packages) > 0
                 instant: true
                 intervalMs: 1000
                 legendFormat: __auto
@@ -3342,8 +3342,8 @@ groups:
           execErrState: Error
           for: 1m
           annotations:
-            description: 'pkg audit lists {{ $value }} vulnerable installed package(s) (series pkg_audit_vulnerable_package names them). Packages are installed state: present, so only a patching window upgrades them (freebsd-pkg-upgrade or freebsd-update). Check: sudo pkg audit'
-            summary: '{{ $labels.instance }} has vulnerable packages'
+            description: '{{ $value }} vulnerable package(s) can be upgraded to a version pkg audit does not flag (series pkg_audit_vulnerable_package{fix="available"} names them). Packages are installed state: present, so a patching window upgrades them (freebsd-pkg-upgrade or freebsd-update). Flagged packages with no fix in the repository (fix="none" or "not_in_repo") do not alert. Check: sudo pkg audit'
+            summary: '{{ $labels.instance }} has vulnerable packages with a fix available'
           labels:
             severity: warning
           isPaused: false
