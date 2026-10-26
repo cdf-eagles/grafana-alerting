@@ -3307,7 +3307,7 @@ groups:
               datasourceUid: cei7lwvco16o0b
               model:
                 editorMode: code
-                expr: max by (instance) (pkg_audit_fixable_packages or pkg_audit_vulnerable_packages) > 0
+                expr: max by (instance) (pkg_audit_fixable_packages) > 0
                 instant: true
                 intervalMs: 1000
                 legendFormat: __auto
