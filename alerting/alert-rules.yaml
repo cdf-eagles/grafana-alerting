@@ -6,7 +6,7 @@ groups:
       interval: 5m
       rules:
         - uid: cep5pp5gfcdtsc
-          title: TLSCertificateExpiring1Day
+          title: TLSCertificateExpiring7Day
           condition: C
           data:
             - refId: A
@@ -15,14 +15,10 @@ groups:
                 to: 0
               datasourceUid: cei7lwvco16o0b
               model:
-                datasource:
-                    type: prometheus
-                    uid: cei7lwvco16o0b
                 editorMode: code
-                expr: probe_ssl_earliest_cert_expiry - time() < 24 * 3600
+                expr: probe_ssl_earliest_cert_expiry - time() < 7 * 86400
                 instant: true
                 intervalMs: 1000
-                legendFormat: __auto
                 maxDataPoints: 43200
                 range: false
                 refId: A
@@ -40,12 +36,7 @@ groups:
                         params:
                             - C
                       reducer:
-                        params: []
                         type: last
-                      type: query
-                datasource:
-                    type: __expr__
-                    uid: __expr__
                 expression: A
                 intervalMs: 1000
                 maxDataPoints: 43200
@@ -55,15 +46,15 @@ groups:
           execErrState: Error
           for: 5m
           annotations:
-            description: The certificate for {{ $labels.instance }} is about to expire in less than 1 day.
-            summary: Certificate for {{ $labels.instance }} is about to expire
+            description: 'The certificate for {{ $labels.instance }} expires in less than 7 days, or has already expired (the value goes negative). Renew by hand on the host now and find out why the scheduled renewal failed (Let''s Encrypt rate limits apply: do not loop certbot).'
+            summary: Certificate for {{ $labels.instance }} expires in under 7 days
           labels:
             severity: critical
           isPaused: false
           notification_settings:
             receiver: NTFY
         - uid: dep5pr8lwv8cgf
-          title: TLSCertificateExpiring3Day
+          title: TLSCertificateExpiring14Day
           condition: C
           data:
             - refId: A
@@ -72,14 +63,10 @@ groups:
                 to: 0
               datasourceUid: cei7lwvco16o0b
               model:
-                datasource:
-                    type: prometheus
-                    uid: cei7lwvco16o0b
                 editorMode: code
-                expr: probe_ssl_earliest_cert_expiry - time() < 3 * 24 * 3600
+                expr: probe_ssl_earliest_cert_expiry - time() < 14 * 86400 >= 7 * 86400
                 instant: true
                 intervalMs: 1000
-                legendFormat: __auto
                 maxDataPoints: 43200
                 range: false
                 refId: A
@@ -97,12 +84,7 @@ groups:
                         params:
                             - C
                       reducer:
-                        params: []
                         type: last
-                      type: query
-                datasource:
-                    type: __expr__
-                    uid: __expr__
                 expression: A
                 intervalMs: 1000
                 maxDataPoints: 43200
@@ -112,8 +94,248 @@ groups:
           execErrState: Error
           for: 5m
           annotations:
-            description: The certificate for {{ $labels.instance }} is about to expire in less than 3 days.
-            summary: Certificate for {{ $labels.instance }} is about to expire
+            description: The certificate for {{ $labels.instance }} expires in less than 14 days (and more than 7; the 7Day rule fires below that). Let's Encrypt renews at 30 days, so a certificate this close means the renewal job on its host has failed twice or more. Check the certbot/acme log on the host and the httpd reload; Uptime Kuma's TLS group warns at 21/14/7 days on the same hosts.
+            summary: Certificate for {{ $labels.instance }} expires in under 14 days
+          labels:
+            severity: warning
+          isPaused: false
+          notification_settings:
+            receiver: NTFY
+        - uid: dfbc836y7mqrkf
+          title: MariaDBHighTableLockWaits
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: cei7lwvco16o0b
+              model:
+                editorMode: code
+                expr: rate(mysql_global_status_table_locks_waited[5m])
+                instant: true
+                intervalMs: 1000
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 10
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - C
+                      reducer:
+                        type: last
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: NoData
+          execErrState: Error
+          for: 10m
+          annotations:
+            description: '{{ $value | humanize }} lock waits per second. Consider using InnoDB instead of MyISAM or optimizing queries.'
+            summary: High table lock waits on {{ $labels.instance }}
+          labels:
+            severity: warning
+          isPaused: false
+          notification_settings:
+            receiver: NTFY
+        - uid: cg2j3wgq26vpce
+          title: BlackboxProbeFailed
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: cei7lwvco16o0b
+              model:
+                editorMode: code
+                expr: probe_success{job=~"blackbox_(http|tls|ldaps|healthchecks)", instance!="https://vault.sleem.net/v1/sys/health"} == 0
+                instant: true
+                intervalMs: 1000
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - -1
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - C
+                      reducer:
+                        type: last
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          for: 5m
+          annotations:
+            description: 'probe_success has been 0 for 5 minutes for {{ $labels.instance }} in job {{ $labels.job }}. blackbox_tls: the TLS handshake or certificate chain failed (expired, wrong name, or the vhost is gone), not only expiry. blackbox_http: the page did not return its expected status. blackbox_ldaps: LDAPS on ldap or ldap02 refused. blackbox_healthchecks: a Mimir, Loki, Tempo, unpoller or exportarr /metrics endpoint on podman01 is down. Read the failure in Explore (mimir): probe_failed_due_to_regex, probe_http_status_code and probe_ssl_last_chain_info for the same instance, then curl -vk the target from podman01. The vault health probe is excluded here; OpenBaoSealedOrDown owns it. A probe whose series vanished is ScrapeTargetVanished''s job.'
+            summary: Blackbox probe of {{ $labels.instance }} ({{ $labels.job }}) is failing
+          labels:
+            severity: warning
+          isPaused: false
+          notification_settings:
+            receiver: NTFY
+        - uid: fg2j40ao1tr7kb
+          title: TailscaleKeyExpiring
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: cei7lwvco16o0b
+              model:
+                editorMode: code
+                expr: ((tailscale_devices_expires_timestamp - time()) / 86400 < 14) and on (id) tailscale_devices_key_expiry_disabled == 0
+                instant: true
+                intervalMs: 1000
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - -1e+09
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - C
+                      reducer:
+                        type: last
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          for: 1h
+          annotations:
+            description: tailscale_devices_expires_timestamp for {{ $labels.name }} is under 14 days away and key expiry is not disabled for it. When it expires the node drops off the tailnet; for an exit node that strands the phones. Either re-authenticate on the device (tailscale up) or disable key expiry for infrastructure nodes in the Tailscale admin console (Machines, the node, Disable key expiry); Ansible-enrolled nodes can be re-provisioned with the OAuth key.
+            summary: Tailscale key for {{ $labels.hostname }} expires in {{ printf "%.0f" $values.A.Value }} days
+          labels:
+            severity: warning
+          isPaused: false
+          notification_settings:
+            receiver: NTFY
+        - uid: fg2j40bf3q60wc
+          title: TailscaleInfraNodeOffline
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: cei7lwvco16o0b
+              model:
+                editorMode: code
+                expr: tailscale_devices_online{name=~"(exitnode|soundwave|shockwave|persephone)[.-].*"} == 0
+                instant: true
+                intervalMs: 1000
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - -1
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - C
+                      reducer:
+                        type: last
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          for: 10m
+          annotations:
+            description: 'tailscale_devices_online has been 0 for 10 minutes for {{ $labels.name }}: one of the exit nodes or infrastructure nodes (exitnode, soundwave, shockwave, persephone) has left the tailnet. The phones fall back to the next exit node (exitnode, shockwave, soundwave, then the Apple TVs). On the host: tailscale status; sudo service tailscaled restart (FreeBSD) or the Tailscale app on shockwave. During a soundwave patch window, silence this rule for soundwave.'
+            summary: Tailscale node {{ $labels.hostname }} is offline
+          labels:
+            severity: critical
+          isPaused: false
+          notification_settings:
+            receiver: NTFY
+        - uid: fg2j4545rxw5ce
+          title: AuthentikOutpostDisconnected
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: cei7lwvco16o0b
+              model:
+                editorMode: code
+                expr: authentik_outposts_connected == 0
+                instant: true
+                intervalMs: 1000
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - -1
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - C
+                      reducer:
+                        type: last
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          for: 5m
+          annotations:
+            description: 'authentik_outposts_connected has been 0 for 5 minutes for {{ $labels.outpost }} (expected {{ $labels.expected }}): the proxy outpost that fronts Uptime Kuma (and whatever else it serves) has lost its websocket to the Authentik server, so sign-ins through it fail or hang while the app behind it stays up. On podman03: sudo podman ps --filter name=authentik; sudo journalctl -u authentik-proxy-outpost.service -n 50 --no-pager (or the outpost''s unit name); the outpost page in Authentik shows last seen. A restart of the outpost container reconnects it.'
+            summary: Authentik outpost {{ $labels.outpost }} is disconnected
           labels:
             severity: warning
           isPaused: false
@@ -280,167 +502,6 @@ groups:
             summary: Low InnoDB buffer pool hit ratio on {{ $labels.instance }}
           labels:
             severity: warning
-          isPaused: false
-          notification_settings:
-            receiver: NTFY
-        - uid: dfbc7r2uxaqyoe
-          title: MariaDBReplicationLag
-          condition: C
-          data:
-            - refId: A
-              relativeTimeRange:
-                from: 600
-                to: 0
-              datasourceUid: cei7lwvco16o0b
-              model:
-                editorMode: code
-                expr: mysql_slave_status_seconds_behind_master
-                instant: true
-                intervalMs: 1000
-                legendFormat: __auto
-                maxDataPoints: 43200
-                range: false
-                refId: A
-            - refId: C
-              datasourceUid: __expr__
-              model:
-                conditions:
-                    - evaluator:
-                        params:
-                            - 30
-                        type: gt
-                      operator:
-                        type: and
-                      query:
-                        params:
-                            - C
-                      reducer:
-                        params: []
-                        type: last
-                      type: query
-                datasource:
-                    type: __expr__
-                    uid: __expr__
-                expression: A
-                intervalMs: 1000
-                maxDataPoints: 43200
-                refId: C
-                type: threshold
-          noDataState: OK
-          execErrState: Error
-          for: 5m
-          keepFiringFor: 5m
-          annotations:
-            description: Replica is {{ $value }} seconds behind master. Check replication health and network connectivity.
-            summary: MySQL replication lag on {{ $labels.instance }}
-          labels:
-            severity: critical
-          isPaused: false
-          notification_settings:
-            receiver: NTFY
-        - uid: dfbc7yvub43y8d
-          title: MariaDBReplicationStopped
-          condition: C
-          data:
-            - refId: A
-              relativeTimeRange:
-                from: 600
-                to: 0
-              datasourceUid: cei7lwvco16o0b
-              model:
-                editorMode: code
-                expr: mysql_slave_status_slave_io_running == 0 or mysql_slave_status_slave_sql_running == 0
-                instant: true
-                intervalMs: 1000
-                legendFormat: __auto
-                maxDataPoints: 43200
-                range: false
-                refId: A
-            - refId: C
-              datasourceUid: __expr__
-              model:
-                conditions:
-                    - evaluator:
-                        params:
-                            - 0
-                        type: gt
-                      operator:
-                        type: and
-                      query:
-                        params:
-                            - C
-                      reducer:
-                        params: []
-                        type: last
-                      type: query
-                datasource:
-                    type: __expr__
-                    uid: __expr__
-                expression: A
-                intervalMs: 1000
-                maxDataPoints: 43200
-                refId: C
-                type: threshold
-          noDataState: OK
-          execErrState: Error
-          annotations:
-            description: Replication threads are not running. Check error logs immediately.
-            summary: MySQL replication stopped on {{ $labels.instance }}
-          labels:
-            severity: critical
-          isPaused: false
-          notification_settings:
-            receiver: NTFY
-        - uid: dfbc836y7mqrkf
-          title: MariaDBHighTableLockWaits
-          condition: C
-          data:
-            - refId: A
-              relativeTimeRange:
-                from: 600
-                to: 0
-              datasourceUid: cei7lwvco16o0b
-              model:
-                editorMode: code
-                expr: rate(mysql_global_status_table_locks_waited[5m])
-                instant: true
-                intervalMs: 1000
-                legendFormat: __auto
-                maxDataPoints: 43200
-                range: false
-                refId: A
-            - refId: C
-              datasourceUid: __expr__
-              model:
-                conditions:
-                    - evaluator:
-                        params:
-                            - 10
-                        type: gt
-                      operator:
-                        type: and
-                      query:
-                        params:
-                            - C
-                      reducer:
-                        params: []
-                        type: last
-                      type: query
-                datasource:
-                    type: __expr__
-                    uid: __expr__
-                expression: A
-                intervalMs: 1000
-                maxDataPoints: 43200
-                refId: C
-                type: threshold
-          noDataState: NoData
-          execErrState: Error
-          for: 10m
-          keepFiringFor: 5m
-          annotations:
-            description: '{{ $value | humanize }} lock waits per second. Consider using InnoDB instead of MyISAM or optimizing queries.'
-            summary: High table lock waits on {{ $labels.instance }}
           isPaused: false
           notification_settings:
             receiver: NTFY
@@ -1252,10 +1313,9 @@ groups:
               datasourceUid: cei7lwvco16o0b
               model:
                 editorMode: code
-                expr: ipmi_fan_speed_rpm > 7000
+                expr: ipmi_fan_speed_rpm > 7000 <= 10000
                 instant: true
                 intervalMs: 1000
-                legendFormat: __auto
                 maxDataPoints: 43200
                 range: false
                 refId: A
@@ -1273,12 +1333,7 @@ groups:
                         params:
                             - C
                       reducer:
-                        params: []
                         type: last
-                      type: query
-                datasource:
-                    type: __expr__
-                    uid: __expr__
                 expression: A
                 intervalMs: 1000
                 maxDataPoints: 43200
@@ -1287,9 +1342,436 @@ groups:
           noDataState: OK
           execErrState: Error
           for: 5m
-          keepFiringFor: 5m
           annotations:
-            summary: Chassis Fan {{ $labels.instance }}:{{ $labels.name }} over 7000rpm
+            description: '{{ $labels.name }} has spun between 7000 and 10000 rpm for 5 minutes: the BMC is compensating for heat or a failed sibling fan. Above 10000 rpm the Critical rule fires instead. Check IPMI-Temp-* and ipmitool sensor on soundwave.'
+            summary: Chassis fan {{ $labels.instance }}:{{ $labels.name }} over 7000 rpm
+          labels:
+            severity: warning
+          isPaused: false
+          notification_settings:
+            receiver: NTFY
+        - uid: bfcnb3eilst8gd
+          title: IPMI-Temp-Warning
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: cei7lwvco16o0b
+              model:
+                editorMode: code
+                expr: ipmi_temperature_celsius > 85 <= 90
+                instant: true
+                intervalMs: 1000
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - C
+                      reducer:
+                        type: last
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          for: 5m
+          annotations:
+            description: '{{ $labels.name }} on {{ $labels.instance }} has read between 85C and 90C for 5 minutes. Above 90C the Critical rule fires instead. Check airflow and the chassis fans (IPMI-Fan-* rules) before the CPU throttles.'
+            summary: IPMI temperature warning (85-90C) {{ $labels.instance }}:{{ $labels.name }}
+          labels:
+            severity: warning
+          isPaused: false
+          notification_settings:
+            receiver: NTFY
+        - uid: afg80ewyc6tq8c
+          title: NVIDIA GPU Temp (Celcius) Warning
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: cei7lwvco16o0b
+              model:
+                editorMode: code
+                expr: (nvidia_smi_temperature_gpu > 85 <= 90) * on(instance, uuid) group_left(name) nvidia_smi_gpu_info
+                instant: true
+                intervalMs: 1000
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - C
+                      reducer:
+                        type: last
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          annotations:
+            description: GPU {{ $labels.name }} on {{ $labels.instance }} reads between 85C and 90C. Above 90C the Critical rule fires instead. Check nvidia-smi on podman02 and the transcode load (Plex/Jellyfin).
+            summary: NVIDIA temperature warning (85-90C) {{ $labels.instance }}:{{ $labels.name }}
+          labels:
+            severity: warning
+          isPaused: false
+          notification_settings:
+            receiver: NTFY
+        - uid: afg81i2r8m3nka
+          title: NVIDIA GPU Fan Warning
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: cei7lwvco16o0b
+              model:
+                editorMode: code
+                expr: (nvidia_smi_fan_speed_ratio > 0.75 <= 0.85) * on(instance, uuid) group_left(name) nvidia_smi_gpu_info
+                instant: true
+                intervalMs: 1000
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - C
+                      reducer:
+                        type: last
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          annotations:
+            description: GPU {{ $labels.name }} fan is between 75% and 85% of maximum. Above 85% the Critical rule fires instead. Usually heat (see NVIDIA GPU Temp rules); check nvidia-smi on podman02.
+            summary: NVIDIA fan warning (75-85%) {{ $labels.instance }}:{{ $labels.name }}
+          labels:
+            severity: warning
+          isPaused: false
+          notification_settings:
+            receiver: NTFY
+        - uid: efg81odgxcglcb
+          title: NVIDIA GPU Memory Warning
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: cei7lwvco16o0b
+              model:
+                editorMode: code
+                expr: ((nvidia_smi_memory_used_bytes / nvidia_smi_memory_total_bytes) * 100 > 85 <= 95) * on(instance, uuid) group_left(name) nvidia_smi_gpu_info
+                instant: true
+                intervalMs: 1000
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - C
+                      reducer:
+                        type: last
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          annotations:
+            description: 'GPU {{ $labels.name }} memory is between 85% and 95% used. Above 95% the Critical rule fires instead. Check which processes hold it: nvidia-smi on podman02 (NVIDIA GPU Processes Missing covers the exporter''s blind spot).'
+            summary: NVIDIA memory warning (85-95%) {{ $labels.instance }}:{{ $labels.name }}
+          labels:
+            severity: warning
+          isPaused: false
+          notification_settings:
+            receiver: NTFY
+        - uid: ag2j3wd2ejjlsf
+          title: UpsOnBattery
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: cei7lwvco16o0b
+              model:
+                editorMode: code
+                expr: network_ups_tools_ups_status{flag="OB"} == 1
+                instant: true
+                intervalMs: 1000
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - C
+                      reducer:
+                        type: last
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          for: 2m
+          annotations:
+            description: 'network_ups_tools_ups_status{flag="OB"} has been 1 for 2 minutes: mains power to {{ $labels.ups }} is gone and soundwave and the switches are draining the battery. Short dips under 2 minutes do not fire this. Watch UpsLowBattery and network_ups_tools_battery_charge (mimir) for the remaining runtime; upsc on the NUT host shows battery.runtime. Nothing shuts soundwave down automatically: decide before the battery empties. No data is treated as OK here because UpsMetricsVanished covers a missing exporter.'
+            summary: UPS {{ $labels.ups }} is on battery
+          labels:
+            severity: critical
+          isPaused: false
+          notification_settings:
+            receiver: NTFY
+        - uid: ag2j3wdswgrnkc
+          title: UpsLowBattery
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: cei7lwvco16o0b
+              model:
+                editorMode: code
+                expr: network_ups_tools_ups_status{flag="LB"} == 1
+                instant: true
+                intervalMs: 1000
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - C
+                      reducer:
+                        type: last
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          annotations:
+            description: 'network_ups_tools_ups_status{flag="LB"} is 1: the UPS has reached its low-battery threshold and will cut power within minutes. If soundwave is still up, stop the guests and shut it down now (sudo shutdown -p now) before the pools lose power uncleanly. Fires at once, no pending period.'
+            summary: UPS {{ $labels.ups }} battery is low
+          labels:
+            severity: critical
+          isPaused: false
+          notification_settings:
+            receiver: NTFY
+        - uid: fg2j3wei2xx4wa
+          title: UpsBatteryChargeLow
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: cei7lwvco16o0b
+              model:
+                editorMode: code
+                expr: network_ups_tools_battery_charge < 50
+                instant: true
+                intervalMs: 1000
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - C
+                      reducer:
+                        type: last
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          for: 5m
+          annotations:
+            description: 'network_ups_tools_battery_charge has been under 50% for 5 minutes. On battery this is the halfway point of the runtime; on mains it means the battery is not recharging or is worn (see UpsReplaceBattery). Check upsc on the NUT host: ups.status, battery.runtime, battery.charge.'
+            summary: UPS {{ $labels.ups }} battery charge is {{ printf "%.0f" $values.A.Value }}%
+          labels:
+            severity: warning
+          isPaused: false
+          notification_settings:
+            receiver: NTFY
+        - uid: bg2j3wf8xcmwwf
+          title: UpsReplaceBattery
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: cei7lwvco16o0b
+              model:
+                editorMode: code
+                expr: network_ups_tools_ups_status{flag="RB"} == 1
+                instant: true
+                intervalMs: 1000
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - C
+                      reducer:
+                        type: last
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          annotations:
+            description: 'network_ups_tools_ups_status{flag="RB"} is 1: the UPS self-test judged the battery worn. The runtime on the next outage is unknown; order a replacement and run a calibration after fitting it (upscmd -l on the NUT host lists the commands).'
+            summary: UPS {{ $labels.ups }} reports replace battery
+          labels:
+            severity: warning
+          isPaused: false
+          notification_settings:
+            receiver: NTFY
+        - uid: bg2j3wfzu991ce
+          title: UpsMetricsVanished
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: cei7lwvco16o0b
+              model:
+                editorMode: code
+                expr: group by (ups) (max_over_time(network_ups_tools_ups_status{flag="OL"}[1d])) unless group by (ups) (network_ups_tools_ups_status{flag="OL"})
+                instant: true
+                intervalMs: 1000
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - C
+                      reducer:
+                        type: last
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          for: 15m
+          annotations:
+            description: 'network_ups_tools_ups_status for {{ $labels.ups }} was in Mimir within the last day and has been absent for 15m: nut_exporter on podman01 stopped, upsd is unreachable, or the USB link to the UPS dropped. While this fires the UpsOnBattery and UpsLowBattery rules are blind. Check: Uptime Kuma monitor Nut Exporter (port 9199), sudo journalctl -u nut-exporter -n 30 on podman01, upsc on the NUT host. Clears by itself one day after the series disappeared, which does not mean it recovered.'
+            summary: UPS {{ $labels.ups }} stopped reporting to Mimir
           labels:
             severity: warning
           isPaused: false
@@ -1346,63 +1828,6 @@ groups:
             summary: Chassis Fan {{$labels.instance}}:{{ $labels.name }} over 10000rpm
           labels:
             severity: critical
-          isPaused: false
-          notification_settings:
-            receiver: NTFY
-        - uid: bfcnb3eilst8gd
-          title: IPMI-Temp-Warning
-          condition: C
-          data:
-            - refId: A
-              relativeTimeRange:
-                from: 600
-                to: 0
-              datasourceUid: cei7lwvco16o0b
-              model:
-                editorMode: code
-                expr: ipmi_temperature_celsius
-                instant: true
-                intervalMs: 1000
-                legendFormat: __auto
-                maxDataPoints: 43200
-                range: false
-                refId: A
-            - refId: C
-              datasourceUid: __expr__
-              model:
-                conditions:
-                    - evaluator:
-                        params:
-                            - 85
-                        type: gt
-                      operator:
-                        type: and
-                      query:
-                        params:
-                            - C
-                      reducer:
-                        params: []
-                        type: last
-                      type: query
-                datasource:
-                    type: __expr__
-                    uid: __expr__
-                expression: A
-                intervalMs: 1000
-                maxDataPoints: 43200
-                refId: C
-                type: threshold
-          noDataState: OK
-          execErrState: Error
-          for: 5m
-          keepFiringFor: 5m
-          annotations:
-            summary: |-
-                IPMI Temperature Warning (>85C)
-
-                {{ $labels.instance }}:{{ $labels.name }}
-          labels:
-            severity: warning
           isPaused: false
           notification_settings:
             receiver: NTFY
@@ -1801,61 +2226,6 @@ groups:
           isPaused: false
           notification_settings:
             receiver: NTFY
-        - uid: afg80ewyc6tq8c
-          title: NVIDIA GPU Temp (Celcius) Warning
-          condition: C
-          data:
-            - refId: A
-              relativeTimeRange:
-                from: 600
-                to: 0
-              datasourceUid: cei7lwvco16o0b
-              model:
-                editorMode: code
-                expr: nvidia_smi_temperature_gpu * on(instance, uuid) group_left(name) nvidia_smi_gpu_info
-                instant: true
-                intervalMs: 1000
-                legendFormat: __auto
-                maxDataPoints: 43200
-                range: false
-                refId: A
-            - refId: C
-              datasourceUid: __expr__
-              model:
-                conditions:
-                    - evaluator:
-                        params:
-                            - 85
-                        type: gt
-                      operator:
-                        type: and
-                      query:
-                        params: []
-                      reducer:
-                        params: []
-                        type: last
-                      type: query
-                datasource:
-                    type: __expr__
-                    uid: __expr__
-                expression: A
-                intervalMs: 1000
-                maxDataPoints: 43200
-                refId: C
-                type: threshold
-          noDataState: OK
-          execErrState: Error
-          keepFiringFor: 5m
-          annotations:
-            summary: |-
-                NVIDIA Temperature (C) Warning
-
-                {{ $labels.instance }}:{{ $labels.name }}
-          labels:
-            severity: warning
-          isPaused: false
-          notification_settings:
-            receiver: NTFY
         - uid: ffg80gx3m40zkc
           title: NVIDIA GPU Temp (Celcius) Critical
           condition: C
@@ -1911,171 +2281,6 @@ groups:
           isPaused: false
           notification_settings:
             receiver: NTFY
-        - uid: dfg81abcqhi4gd
-          title: NVIDIA GPU Power Utilization Warning
-          condition: C
-          data:
-            - refId: A
-              relativeTimeRange:
-                from: 600
-                to: 0
-              datasourceUid: cei7lwvco16o0b
-              model:
-                editorMode: code
-                expr: nvidia_smi_power_draw_watts * on(instance, uuid) group_left(name) nvidia_smi_gpu_info
-                instant: true
-                intervalMs: 1000
-                legendFormat: __auto
-                maxDataPoints: 43200
-                range: false
-                refId: A
-            - refId: C
-              datasourceUid: __expr__
-              model:
-                conditions:
-                    - evaluator:
-                        params:
-                            - 68
-                        type: gt
-                      operator:
-                        type: and
-                      query:
-                        params: []
-                      reducer:
-                        params: []
-                        type: last
-                      type: query
-                datasource:
-                    type: __expr__
-                    uid: __expr__
-                expression: A
-                intervalMs: 1000
-                maxDataPoints: 43200
-                refId: C
-                type: threshold
-          noDataState: OK
-          execErrState: Error
-          keepFiringFor: 5m
-          annotations:
-            summary: |-
-                NVIDIA Power Utilization Warning
-
-                {{ $labels.instance }}:{{ $labels.name }}
-          labels:
-            severity: warning
-          isPaused: false
-          notification_settings:
-            receiver: NTFY
-        - uid: bfg81domx04jkc
-          title: NVIDIA GPU Power Utilization Critical
-          condition: C
-          data:
-            - refId: A
-              relativeTimeRange:
-                from: 600
-                to: 0
-              datasourceUid: cei7lwvco16o0b
-              model:
-                editorMode: code
-                expr: nvidia_smi_power_draw_watts * on(instance, uuid) group_left(name) nvidia_smi_gpu_info
-                instant: true
-                intervalMs: 1000
-                legendFormat: __auto
-                maxDataPoints: 43200
-                range: false
-                refId: A
-            - refId: C
-              datasourceUid: __expr__
-              model:
-                conditions:
-                    - evaluator:
-                        params:
-                            - 70
-                        type: gte
-                      operator:
-                        type: and
-                      query:
-                        params: []
-                      reducer:
-                        params: []
-                        type: last
-                      type: query
-                datasource:
-                    type: __expr__
-                    uid: __expr__
-                expression: A
-                intervalMs: 1000
-                maxDataPoints: 43200
-                refId: C
-                type: threshold
-          noDataState: OK
-          execErrState: Error
-          keepFiringFor: 5m
-          annotations:
-            summary: |-
-                NVIDIA Power Utilization Critical
-
-                {{ $labels.instance }}:{{ $labels.name }}
-          labels:
-            severity: critical
-          isPaused: false
-          notification_settings:
-            receiver: NTFY
-        - uid: afg81i2r8m3nka
-          title: NVIDIA GPU Fan Warning
-          condition: C
-          data:
-            - refId: A
-              relativeTimeRange:
-                from: 600
-                to: 0
-              datasourceUid: cei7lwvco16o0b
-              model:
-                editorMode: code
-                expr: nvidia_smi_fan_speed_ratio * on(instance, uuid) group_left(name) nvidia_smi_gpu_info
-                instant: true
-                intervalMs: 1000
-                legendFormat: __auto
-                maxDataPoints: 43200
-                range: false
-                refId: A
-            - refId: C
-              datasourceUid: __expr__
-              model:
-                conditions:
-                    - evaluator:
-                        params:
-                            - 0.75
-                        type: gt
-                      operator:
-                        type: and
-                      query:
-                        params: []
-                      reducer:
-                        params: []
-                        type: last
-                      type: query
-                datasource:
-                    type: __expr__
-                    uid: __expr__
-                expression: A
-                intervalMs: 1000
-                maxDataPoints: 43200
-                refId: C
-                type: threshold
-          noDataState: OK
-          execErrState: Error
-          keepFiringFor: 5m
-          annotations:
-            summary: |-
-                NVIDIA Fan Warning
-
-                {{ $labels.instance }}:{{ $labels.name }}
-          labels:
-            severity: warning
-          isPaused: false
-          notification_settings:
-            receiver: NTFY
         - uid: bfg81jwa6835sa
           title: NVIDIA GPU Fan Critical
           condition: C
@@ -2128,61 +2333,6 @@ groups:
                 {{ $labels.instance }}:{{ $labels.name }}
           labels:
             severity: critical
-          isPaused: false
-          notification_settings:
-            receiver: NTFY
-        - uid: efg81odgxcglcb
-          title: NVIDIA GPU Memory Warning
-          condition: C
-          data:
-            - refId: A
-              relativeTimeRange:
-                from: 600
-                to: 0
-              datasourceUid: cei7lwvco16o0b
-              model:
-                editorMode: code
-                expr: (nvidia_smi_memory_used_bytes / nvidia_smi_memory_total_bytes) * 100 * on(instance, uuid) group_left(name) nvidia_smi_gpu_info
-                instant: true
-                intervalMs: 1000
-                legendFormat: __auto
-                maxDataPoints: 43200
-                range: false
-                refId: A
-            - refId: C
-              datasourceUid: __expr__
-              model:
-                conditions:
-                    - evaluator:
-                        params:
-                            - 85
-                        type: gt
-                      operator:
-                        type: and
-                      query:
-                        params: []
-                      reducer:
-                        params: []
-                        type: last
-                      type: query
-                datasource:
-                    type: __expr__
-                    uid: __expr__
-                expression: A
-                intervalMs: 1000
-                maxDataPoints: 43200
-                refId: C
-                type: threshold
-          noDataState: OK
-          execErrState: Error
-          keepFiringFor: 5m
-          annotations:
-            summary: |-
-                NVIDIA Memory Warning
-
-                {{ $labels.instance }}:{{ $labels.name }}
-          labels:
-            severity: warning
           isPaused: false
           notification_settings:
             receiver: NTFY
@@ -2352,6 +2502,107 @@ groups:
           notification_settings:
             receiver: NTFY
     - orgId: 2
+      name: logs
+      folder: Alert Rules
+      interval: 10m
+      rules:
+        - uid: fg2j451u4cb9cd
+          title: HostStoppedLogging
+          condition: C
+          data:
+            - refId: A
+              queryType: instant
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: cefqyqv6j9c00e
+              model:
+                editorMode: code
+                expr: (sum by (instance) (count_over_time({instance=~".+", instance!="quicksilver.sleem.net"}[6h])) > 0) unless (sum by (instance) (count_over_time({instance=~".+", instance!="quicksilver.sleem.net"}[1h])) > 0)
+                intervalMs: 1000
+                maxDataPoints: 43200
+                queryType: instant
+                refId: A
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - C
+                      reducer:
+                        type: last
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          for: 10m
+          annotations:
+            description: 'Loki holds lines from {{ $labels.instance }} within the last 6 hours but none in the last hour. The host is up (or ScrapeTargetDown would say otherwise), so its Alloy stopped shipping: the FreeBSD file tail lost the logread group, the journal source on a podman host stopped, or Loki rejected the push. quicksilver is excluded. On the host: sudo service alloy status / sudo systemctl status alloy; then Alloy''s own log for loki.write errors; then a deliberate logger test line and query it in Explore (loki). Clears when lines resume.'
+            summary: '{{ $labels.instance }} has sent no logs to Loki for over an hour'
+          labels:
+            severity: warning
+          isPaused: false
+          notification_settings:
+            receiver: NTFY
+        - uid: ag2j452ox38qob
+          title: UniFiGatewayStoppedLogging
+          condition: C
+          data:
+            - refId: A
+              queryType: instant
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: cefqyqv6j9c00e
+              model:
+                editorMode: code
+                expr: (sum by (hostname) (count_over_time({job="integrations/syslog", hostname="unifi-dm01"}[24h])) > 0) unless (sum by (hostname) (count_over_time({job="integrations/syslog", hostname="unifi-dm01"}[2h])) > 0)
+                intervalMs: 1000
+                maxDataPoints: 43200
+                queryType: instant
+                refId: A
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - C
+                      reducer:
+                        type: last
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          for: 10m
+          annotations:
+            description: 'job integrations/syslog holds lines from {{ $labels.hostname }} within the last 24 hours but none in the last 2 hours. Only unifi-dm01 is watched: the gateway logs continuously (firewall, DHCP, IDS), while the switches and APs can be silent for hours and are covered by UniFiDeviceStoppedReporting (unpoller) instead. Causes: remote syslog turned off in the UniFi console, or soundwave''s Alloy syslog listener (TCP 51893 / UDP 51898) stopped. On soundwave: sudo service alloy status; sockstat -l | grep 5189. Clears when lines resume.'
+            summary: '{{ $labels.hostname }} has sent no syslog to soundwave for over 2 hours'
+          labels:
+            severity: warning
+          isPaused: false
+          notification_settings:
+            receiver: NTFY
+    - orgId: 2
       name: notifier
       folder: Alert Rules
       interval: 1m
@@ -2367,18 +2618,13 @@ groups:
                 to: 0
               datasourceUid: cefqyqv6j9c00e
               model:
-                datasource:
-                    type: loki
-                    uid: cefqyqv6j9c00e
                 editorMode: code
                 expr: sum(count_over_time({instance="podman01.sleem.net", unit="grafana-grafana.service"} |~ `^logger=ngalert\.notifier` |= "Notify for alerts failed" [10m]))
-                instant: true
                 intervalMs: 1000
                 maxDataPoints: 43200
                 queryType: instant
                 refId: A
             - refId: C
-              queryType: expression
               datasourceUid: __expr__
               model:
                 conditions:
@@ -2392,12 +2638,7 @@ groups:
                         params:
                             - C
                       reducer:
-                        params: []
                         type: last
-                      type: query
-                datasource:
-                    type: __expr__
-                    uid: __expr__
                 expression: A
                 intervalMs: 1000
                 maxDataPoints: 43200
@@ -2408,12 +2649,11 @@ groups:
           annotations:
             description: 'Grafana''s notifier logged "Notify for alerts failed" {{ printf "%.0f" $values.A.Value }} times in 10 minutes, so at least one alert group never reached its contact point. Read the err= field in Explore (loki): {instance="podman01.sleem.net", unit="grafana-grafana.service"} |~ `^logger=ngalert\.notifier` |= "Notify for alerts failed". Code 40041 means ntfy refused the rendered size (NTFY Notifications, item 197); 401/403 means the podman01 token.'
             summary: '{{ printf "%.0f" $values.A.Value }} Grafana notification(s) failed to deliver in the last 10 minutes'
+          labels:
+            severity: warning
           isPaused: false
           notification_settings:
             receiver: NTFY-minimal
-            group_by:
-                - grafana_folder
-                - alertname
     - orgId: 2
       name: os
       folder: Alert Rules
@@ -2485,7 +2725,6 @@ groups:
                 expr: (time() - max by (instance) (pkg_audit_last_run_timestamp_seconds)) > 93600 or (time() - max by (instance) (pkg_audit_db_timestamp_seconds)) > 259200 or on (instance) (count by (instance) (node_uname_info{job="node", sysname="FreeBSD"}) unless on (instance) pkg_audit_last_run_timestamp_seconds)
                 instant: true
                 intervalMs: 1000
-                legendFormat: __auto
                 maxDataPoints: 43200
                 range: false
                 refId: A
@@ -2496,17 +2735,14 @@ groups:
                     - evaluator:
                         params:
                             - 0
-                            - 0
                         type: gt
                       operator:
                         type: and
                       query:
-                        params: []
+                        params:
+                            - B
                       reducer:
-                        type: avg
-                datasource:
-                    type: __expr__
-                    uid: __expr__
+                        type: last
                 expression: A
                 intervalMs: 1000
                 maxDataPoints: 43200
@@ -2520,7 +2756,7 @@ groups:
             summary: pkg audit is stale on {{ $labels.instance }}
           labels:
             severity: warning
-          isPaused: true
+          isPaused: false
           notification_settings:
             receiver: NTFY
         - uid: eeoh325xqxt6oe
@@ -2534,10 +2770,9 @@ groups:
               datasourceUid: cei7lwvco16o0b
               model:
                 editorMode: code
-                expr: ((node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes * 100) < 5) * on(instance, job) group_left (nodename) node_uname_info{nodename=~".+", job="node"}
+                expr: ((node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes * 100) < 5 >= 2) * on(instance, job) group_left (nodename) node_uname_info{nodename=~".+", job="node"}
                 instant: true
                 intervalMs: 1000
-                legendFormat: __auto
                 maxDataPoints: 43200
                 range: false
                 refId: A
@@ -2555,12 +2790,7 @@ groups:
                         params:
                             - C
                       reducer:
-                        params: []
                         type: last
-                      type: query
-                datasource:
-                    type: __expr__
-                    uid: __expr__
                 expression: A
                 intervalMs: 1000
                 maxDataPoints: 43200
@@ -2570,9 +2800,972 @@ groups:
           execErrState: Error
           for: 1m
           annotations:
-            summary: Memory Usage > 95% for {{ $labels.instance }}
+            description: 'MemAvailable is between 2% and 5% of MemTotal (Linux and macOS node_exporter). Below 2% the Critical rule fires instead. Check: top -o %MEM; on the podman hosts, podman stats.'
+            summary: Memory usage > 95% on {{ $labels.instance }}
           labels:
             severity: warning
+          isPaused: false
+          notification_settings:
+            receiver: NTFY
+        - uid: bep5ngop9w5c0d
+          title: SwapOverThreshhold-Warn
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: cei7lwvco16o0b
+              model:
+                editorMode: code
+                expr: ((avg_over_time(node_memory_swap_used_bytes[5m]) * 100) / node_memory_swap_size_bytes > 80 <= 90) * on(instance, job) group_left (nodename) node_uname_info{nodename=~".+", job="node"}
+                instant: true
+                intervalMs: 1000
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - C
+                      reducer:
+                        type: last
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          for: 1m
+          annotations:
+            description: 5-minute average swap use between 80% and 90% of swap size (job node, so persephone is included). Above 90% the Critical rule fires instead. FreeBSD guests should have no swap; a guest firing this needs a rebuild from the current image.
+            summary: Swap usage > 80% on {{ $labels.instance }}
+          labels:
+            severity: warning
+          isPaused: false
+          notification_settings:
+            receiver: NTFY
+        - uid: dep5ni5zxwetcb
+          title: SwapOverThreshhold-Critical
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: cei7lwvco16o0b
+              model:
+                editorMode: code
+                expr: ((avg_over_time(node_memory_swap_used_bytes[5m]) * 100) / node_memory_swap_size_bytes > 90) * on(instance, job) group_left (nodename) node_uname_info{nodename=~".+", job="node"}
+                instant: true
+                intervalMs: 1000
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - C
+                      reducer:
+                        type: last
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          for: 1m
+          annotations:
+            description: 5-minute average swap use above 90% of swap size (job node, so persephone is included). The host is about to run out of swap; find the consumer (top -o res on FreeBSD, top -o %MEM on Linux).
+            summary: Swap usage > 90% on {{ $labels.instance }}
+          labels:
+            severity: critical
+          isPaused: false
+          notification_settings:
+            receiver: NTFY
+        - uid: eeppa5j1gsv0ge
+          title: CPUOverThreshhold-Critical
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: cei7lwvco16o0b
+              model:
+                editorMode: code
+                expr: (100 * (1 - avg by(instance) (rate(node_cpu_seconds_total{mode="idle",job="node",instance!="shockwave.sleem.net"}[5m])))) > 98
+                instant: true
+                intervalMs: 1000
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - C
+                      reducer:
+                        type: last
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          for: 5m
+          annotations:
+            description: 'Average CPU busy across all cores above 98% for 5 minutes (job node; shockwave excluded because its video encoding is expected to peg the CPU). Check: top -P on FreeBSD, top on Linux.'
+            summary: CPU > 98% for 5m on {{ $labels.instance }}
+          labels:
+            severity: critical
+          isPaused: false
+          notification_settings:
+            receiver: NTFY
+        - uid: feppa812o1r7ka
+          title: CPUOverThreshhold-Warn
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: cei7lwvco16o0b
+              model:
+                editorMode: code
+                expr: (100 * (1 - avg by(instance) (rate(node_cpu_seconds_total{mode="idle",job="node",instance!="shockwave.sleem.net"}[5m])))) > 95 <= 98
+                instant: true
+                intervalMs: 1000
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - C
+                      reducer:
+                        type: last
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          for: 5m
+          annotations:
+            description: Average CPU busy across all cores between 95% and 98% for 5 minutes (job node; shockwave excluded because its video encoding is expected to peg the CPU). Above 98% the Critical rule fires instead.
+            summary: CPU > 95% for 5m on {{ $labels.instance }}
+          labels:
+            severity: warning
+          isPaused: false
+          notification_settings:
+            receiver: NTFY
+        - uid: aet06vs35zwg0c
+          title: FilesystemOverThreshhold-Warn
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: cei7lwvco16o0b
+              model:
+                editorMode: code
+                expr: (100 - (node_filesystem_avail_bytes{fstype!~"udf|nfs.*|msdosfs|devfs|fdescfs|linprocfs|linsysfs|zfs"} * 100 / node_filesystem_size_bytes{fstype!~"udf|nfs.*|msdosfs|devfs|fdescfs|linprocfs|linsysfs|zfs"}) > 80 <= 90) * on(instance, job) group_left(nodename) node_uname_info{nodename=~".+", job="node"}
+                instant: true
+                intervalMs: 1000
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - C
+                      reducer:
+                        type: last
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          for: 1m
+          annotations:
+            description: '{{ $labels.mountpoint }} on {{ $labels.instance }} ({{ $labels.device }}, {{ $labels.fstype }}) is {{ printf "%.1f" $values.A.Value }}% used, between the 80% and 90% thresholds (job node, so persephone is included). ZFS datasets are excluded here: pool capacity is ZfsPoolNearlyFull''s job, one alert per pool instead of one per dataset. Above 90% the Critical rule fires instead.'
+            summary: Filesystem usage > 80% on {{ $labels.instance }}:{{ $labels.mountpoint }} ({{ printf "%.1f" $values.A.Value }}% used)
+          labels:
+            severity: warning
+          isPaused: false
+          notification_settings:
+            receiver: NTFY
+        - uid: aet06xb5xedc0f
+          title: FilesystemOverThreshhold-Critical
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: cei7lwvco16o0b
+              model:
+                editorMode: code
+                expr: (100 - (node_filesystem_avail_bytes{fstype!~"udf|nfs.*|msdosfs|devfs|fdescfs|linprocfs|linsysfs|zfs"} * 100 / node_filesystem_size_bytes{fstype!~"udf|nfs.*|msdosfs|devfs|fdescfs|linprocfs|linsysfs|zfs"}) > 90) * on(instance, job) group_left(nodename) node_uname_info{nodename=~".+", job="node"}
+                instant: true
+                intervalMs: 1000
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - C
+                      reducer:
+                        type: last
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          for: 1m
+          annotations:
+            description: '{{ $labels.mountpoint }} on {{ $labels.instance }} ({{ $labels.device }}, {{ $labels.fstype }}) is {{ printf "%.1f" $values.A.Value }}% used, over the 90% threshold (job node, so persephone is included). ZFS datasets are excluded here: pool capacity is ZfsPoolNearlyFull''s job.'
+            summary: Filesystem usage > 90% on {{ $labels.instance }}:{{ $labels.mountpoint }} ({{ printf "%.1f" $values.A.Value }}% used)
+          labels:
+            severity: critical
+          isPaused: false
+          notification_settings:
+            receiver: NTFY
+        - uid: afhsq441bim80d
+          title: MemoryOverThreshhold-FreeBSD-Warn
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: cei7lwvco16o0b
+              model:
+                editorMode: code
+                expr: (node_memory_active_bytes / node_memory_size_bytes * 100 > 95 <= 98) * on(instance, job) group_left (nodename) node_uname_info{nodename=~".+", job="node"}
+                instant: true
+                intervalMs: 1000
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - C
+                      reducer:
+                        type: last
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          for: 1m
+          annotations:
+            description: 'Active memory is between 95% and 98% of physical memory on a FreeBSD host. Above 98% the Critical rule fires instead. Check: top -o res; ZFS ARC counts as wired, not active, so this is real process memory.'
+            summary: Memory usage > 95% on {{ $labels.instance }}
+          labels:
+            severity: warning
+          isPaused: false
+          notification_settings:
+            receiver: NTFY
+        - uid: dflmamdh9x0xsb
+          title: PodmanContainerUnhealthy
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: cei7lwvco16o0b
+              model:
+                editorMode: code
+                expr: max by (instance, name) ((podman_container_info{name!~".+-infra", name!~".+_pascal"}) * on(instance, id) group_right (name) (podman_container_health == 1))
+                instant: true
+                intervalMs: 1000
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - C
+                      reducer:
+                        type: last
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          for: 1m
+          annotations:
+            description: 'podman_container_health is 1 (unhealthy) for {{ $labels.name }} on {{ $labels.instance }}; -infra and _pascal containers are excluded, and containers without a healthcheck (-1) never fire this. On the host: sudo podman healthcheck run {{ $labels.name }}; sudo podman inspect --format ''{{"{{"}}.State.Health{{"}}"}}'' {{ $labels.name }}; sudo journalctl -u {{ $labels.name }}.service -n 50 --no-pager. PodmanContainerNotRunning covers stopped or exited containers.'
+            summary: Container {{ $labels.name }} on {{ $labels.instance }} is unhealthy
+          labels:
+            severity: warning
+          isPaused: false
+          notification_settings:
+            receiver: NTFY
+        - uid: cg0mdpp7as8hsd
+          title: OsEol70d
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: cei7lwvco16o0b
+              model:
+                editorMode: code
+                expr: min by (host, product, cycle) (os_eol_days_remaining) < 70 >= 30
+                instant: true
+                intervalMs: 1000
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - C
+                      reducer:
+                        type: last
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          for: 1h
+          annotations:
+            description: 'Operating system end of life in under 70 days (and over 30; OsEol30d takes over below that): two four-week patch windows plus two weeks to prepare. Schedule the release upgrade (guests first, soundwave last) in the next window. Source: os_eol_days_remaining from os-eol-check.py on soundwave; dates from endoflife.date.'
+            summary: '{{ $labels.host }} runs {{ $labels.product }} {{ $labels.cycle }}, end of life in {{ $values.A | printf "%.0f" }} days'
+          labels:
+            severity: info
+          isPaused: false
+          notification_settings:
+            receiver: NTFY
+        - uid: bg0mdtima6xa8d
+          title: OsEol30d
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: cei7lwvco16o0b
+              model:
+                editorMode: code
+                expr: min by (host, product, cycle) (os_eol_days_remaining) < 30 >= 7
+                instant: true
+                intervalMs: 1000
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - C
+                      reducer:
+                        type: last
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          for: 1h
+          annotations:
+            description: 'Operating system end of life in under 30 days (and over 7; OsEol7d takes over below that): one patch window left. The upgrade must be booked for the coming window; after this date the host stops receiving security patches.'
+            summary: '{{ $labels.host }} runs {{ $labels.product }} {{ $labels.cycle }}, end of life in {{ $values.A | printf "%.0f" }} days'
+          labels:
+            severity: warning
+          isPaused: false
+          notification_settings:
+            receiver: NTFY
+        - uid: dg0mdxppwkp34e
+          title: OsEolCycleUnknown
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: cei7lwvco16o0b
+              model:
+                editorMode: code
+                expr: os_eol_cycle_unknown == 1
+                instant: true
+                intervalMs: 1000
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - C
+                      reducer:
+                        type: last
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          for: 1h
+          annotations:
+            description: endoflife.date lists no such release for this host's operating system, so no end-of-life date can be computed. Usually a release newer than the site's data, or a product renamed; check the product and cycle labels against https://endoflife.date/api/<product>.json and fix the product map in roles/soundwave/vars/main.yaml if needed. Never read this as "no end of life".
+            summary: No end-of-life date known for {{ $labels.product }} {{ $labels.cycle }} on {{ $labels.host }}
+          labels:
+            severity: warning
+          isPaused: false
+          notification_settings:
+            receiver: NTFY
+        - uid: fg0mdz91c4h6od
+          title: OsEolCheckFailed
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: cei7lwvco16o0b
+              model:
+                editorMode: code
+                expr: os_eol_check_success
+                instant: true
+                intervalMs: 1000
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 1
+                        type: lt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - C
+                      reducer:
+                        type: last
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: Alerting
+          execErrState: Error
+          for: 1h
+          annotations:
+            description: The daily check on soundwave failed (os_eol_check_success is 0) or reports no metric at all, so every OsEol* gauge is stale. Read /var/log/all.log on soundwave for os-eol-check lines (Prometheus unreachable, endoflife.date unreachable, or the cron.d entry gone), then run sudo /usr/local/bin/os-eol-check.py by hand. No data is treated as alerting.
+            summary: OS end-of-life check on soundwave failed
+          labels:
+            severity: warning
+          isPaused: false
+          notification_settings:
+            receiver: NTFY
+        - uid: ag2j405m3q0hsf
+          title: HostRebooted
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: cei7lwvco16o0b
+              model:
+                editorMode: code
+                expr: (node_time_seconds{job="node", instance!="quicksilver.sleem.net"} - node_boot_time_seconds{job="node", instance!="quicksilver.sleem.net"}) < 900
+                instant: true
+                intervalMs: 1000
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - -1
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - C
+                      reducer:
+                        type: last
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          for: 5m
+          annotations:
+            description: 'node_boot_time_seconds moved: {{ $labels.instance }} has been up for under 15 minutes (planned reboot, crash, or power loss). The 5m pending period means it fires about 5 minutes after boot, once. The Wednesday podman reboot slot (06:55-08:00 UTC) is muted by the podman-reboot-window mute timing; a soundwave patch window needs a silence. quicksilver is excluded (laptop). Check: uptime; last reboot; on FreeBSD /var/log/all.log around the boot, on Linux journalctl -b -1 -p err.'
+            summary: '{{ $labels.instance }} rebooted (uptime {{ printf "%.0f" $values.A.Value }}s)'
+          labels:
+            severity: warning
+          isPaused: false
+          notification_settings:
+            receiver: NTFY
+            mute_time_intervals:
+                - podman-reboot-window
+        - uid: fg2j406e9ksu8d
+          title: LinuxClockUnsynced
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: cei7lwvco16o0b
+              model:
+                editorMode: code
+                expr: node_timex_sync_status{job="node"} == 0
+                instant: true
+                intervalMs: 1000
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - -1
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - C
+                      reducer:
+                        type: last
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          for: 15m
+          annotations:
+            description: 'node_timex_sync_status has been 0 for 15 minutes on a Linux host: the kernel clock is not disciplined by chrony/ntp. The FreeBSD hosts are covered by NtpdNotSynchronized; this is the Linux side. Check: chronyc tracking; chronyc sources -v; ntp.sleem.net reachable on UDP 123 from the host.'
+            summary: Clock not synchronized on {{ $labels.instance }}
+          labels:
+            severity: warning
+          isPaused: false
+          notification_settings:
+            receiver: NTFY
+        - uid: ag2j40715nawwc
+          title: LinuxClockOffsetHigh
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: cei7lwvco16o0b
+              model:
+                editorMode: code
+                expr: abs(node_timex_offset_seconds{job="node"}) > 0.1
+                instant: true
+                intervalMs: 1000
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - C
+                      reducer:
+                        type: last
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          for: 15m
+          annotations:
+            description: 'abs(node_timex_offset_seconds) has been above 100 ms for 15 minutes on a Linux host, the same threshold as NtpdClockOffsetHigh on FreeBSD. Check: chronyc tracking (System time, Last offset); chronyc sources -v; whether the host is syncing to ntp.sleem.net.'
+            summary: Clock offset {{ printf "%.3f" $values.A.Value }}s on {{ $labels.instance }}
+          labels:
+            severity: warning
+          isPaused: false
+          notification_settings:
+            receiver: NTFY
+        - uid: dg2j4095qj8jka
+          title: SystemdUnitFailed
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: cei7lwvco16o0b
+              model:
+                editorMode: code
+                expr: systemd_unit_state{state="failed", name!~"dnf-offline-(stage|reboot)\\.service"} == 1
+                instant: true
+                intervalMs: 1000
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - C
+                      reducer:
+                        type: last
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          for: 5m
+          annotations:
+            description: 'systemd_unit_state{state="failed"} has been 1 for 5 minutes for {{ $labels.name }} ({{ $labels.type }}) on {{ $labels.instance }}. The dnf-offline units are excluded (DnfOfflineUnitFailed owns them) and transient container units are not scraped. On the host: sudo systemctl status {{ $labels.name }} --no-pager; sudo journalctl -u {{ $labels.name }} -n 50 --no-pager. After the fix: sudo systemctl reset-failed {{ $labels.name }}; the alert resolves when the state leaves failed.'
+            summary: '{{ $labels.name }} failed on {{ $labels.instance }}'
+          labels:
+            severity: warning
+          isPaused: false
+          notification_settings:
+            receiver: NTFY
+        - uid: cg2j409vygv7ka
+          title: PodmanContainerNotRunning
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: cei7lwvco16o0b
+              model:
+                editorMode: code
+                expr: max by (instance, name) ((podman_container_info{name!~".+-infra", name!~".+_pascal"}) * on(instance, id) group_right (name) (podman_container_state != 2))
+                instant: true
+                intervalMs: 1000
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - -2
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - C
+                      reducer:
+                        type: last
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          for: 5m
+          annotations:
+            description: 'podman_container_state has not been 2 (running) for 5 minutes: 0=created, 1=initialized, 3=stopped, 4=paused, 5=exited, 6=removing, 7=stopping, -1=unknown. -infra and _pascal containers are excluded. A container that podman removed entirely leaves no series and is caught by the service''s Uptime Kuma port monitor instead. On the host: sudo podman ps -a --filter name={{ $labels.name }}; sudo journalctl -u {{ $labels.name }}.service -n 50 --no-pager; sudo systemctl start {{ $labels.name }}.service.'
+            summary: Container {{ $labels.name }} on {{ $labels.instance }} is not running (state {{ printf "%.0f" $values.A.Value }})
+          labels:
+            severity: warning
+          isPaused: false
+          notification_settings:
+            receiver: NTFY
+        - uid: cg2j453exj6dcc
+          title: AlloyRemoteWriteFailing
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: cei7lwvco16o0b
+              model:
+                editorMode: code
+                expr: sum by (instance, url) (rate(prometheus_remote_storage_samples_failed_total{job="integrations/self"}[10m])) > 0
+                instant: true
+                intervalMs: 1000
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - C
+                      reducer:
+                        type: last
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          for: 10m
+          annotations:
+            description: 'prometheus_remote_storage_samples_failed_total on {{ $labels.instance }} has risen for 10 minutes: samples are being rejected by Prometheus/Mimir (4xx: out-of-order, too-old, series limit; 401/403: the prometheus (alloy writer) basic-auth credential), as opposed to retried (5xx, which queue in the WAL and are covered by AlloyWalCheckpointFailed). This fires about 15 minutes before ScrapeTargetVanished would. On the host: sudo grep -i ''remote_write\|non-recoverable'' /var/log/all.log | tail (FreeBSD) or sudo journalctl -u alloy -n 50 --no-pager; the error names the reason.'
+            summary: Alloy on {{ $labels.instance }} is failing to remote-write to {{ $labels.url }}
+          labels:
+            severity: warning
+          isPaused: false
+          notification_settings:
+            receiver: NTFY
+        - uid: ag2j454xdthq8c
+          title: InodesLow
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: cei7lwvco16o0b
+              model:
+                editorMode: code
+                expr: (node_filesystem_files_free{job="node", fstype!~"zfs|devfs|tmpfs|fdescfs|linprocfs|linsysfs|nfs.*|udf|msdosfs|procfs|nullfs"} / node_filesystem_files{job="node", fstype!~"zfs|devfs|tmpfs|fdescfs|linprocfs|linsysfs|nfs.*|udf|msdosfs|procfs|nullfs"} * 100) < 5
+                instant: true
+                intervalMs: 1000
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - -1
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - C
+                      reducer:
+                        type: last
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          for: 15m
+          annotations:
+            description: '{{ $labels.mountpoint }} ({{ $labels.fstype }}) on {{ $labels.instance }} has {{ printf "%.1f" $values.A.Value }}% of its inodes free. A UFS or ext4/xfs file system can refuse new files while df still shows space; ZFS has no fixed inode table and is excluded. Check: df -i {{ $labels.mountpoint }}; find the directory with the most files (find {{ $labels.mountpoint }} -xdev -type d | while read d; do echo "$(ls -1 "$d" | wc -l) $d"; done | sort -n | tail) and clear caches or spools.'
+            summary: Inodes under 5% free on {{ $labels.instance }}:{{ $labels.mountpoint }}
+          labels:
+            severity: warning
+          isPaused: false
+          notification_settings:
+            receiver: NTFY
+        - uid: dg2j456exn4lcb
+          title: NetworkInterfaceErrors
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: cei7lwvco16o0b
+              model:
+                editorMode: code
+                expr: sum by (instance, device) (rate(node_network_receive_errs_total{job="node", device!~"lo.*|utun.*|awdl.*|llw.*|bridge.*|tailscale.*"}[5m])) > 0
+                instant: true
+                intervalMs: 1000
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - C
+                      reducer:
+                        type: last
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          for: 15m
+          annotations:
+            description: 'node_network_receive_errs_total on {{ $labels.device }} has risen continuously for 15 minutes. Errors are kept apart from drops on purpose (a drop under load is not a fault). A steady error rate on a wired port is a cable, SFP or duplex problem (sw01''s 10G-DAC-in-1G-SFP uplink is the known case); on a bhyve guest''s vtnet it is the host side. Check: netstat -i on FreeBSD, ip -s link on Linux, and the switch port counters in the UniFi console.'
+            summary: '{{ $labels.instance }} {{ $labels.device }} is logging receive errors ({{ printf "%.3f" $values.A.Value }}/s)'
+          labels:
+            severity: info
           isPaused: false
           notification_settings:
             receiver: NTFY
@@ -2629,391 +3822,6 @@ groups:
           isPaused: false
           notification_settings:
             receiver: NTFY
-        - uid: bep5ngop9w5c0d
-          title: SwapOverThreshhold-Warn
-          condition: C
-          data:
-            - refId: A
-              relativeTimeRange:
-                from: 600
-                to: 0
-              datasourceUid: cei7lwvco16o0b
-              model:
-                editorMode: code
-                expr: ((avg_over_time(node_memory_swap_used_bytes[5m]) * 100) / node_memory_swap_size_bytes > 80) * on(instance, job) group_left (nodename) node_uname_info{nodename=~".+", job="integrations/unix"}
-                instant: true
-                intervalMs: 1000
-                legendFormat: __auto
-                maxDataPoints: 43200
-                range: false
-                refId: A
-            - refId: C
-              datasourceUid: __expr__
-              model:
-                conditions:
-                    - evaluator:
-                        params:
-                            - 0
-                        type: gt
-                      operator:
-                        type: and
-                      query:
-                        params:
-                            - C
-                      reducer:
-                        params: []
-                        type: last
-                      type: query
-                datasource:
-                    type: __expr__
-                    uid: __expr__
-                expression: A
-                intervalMs: 1000
-                maxDataPoints: 43200
-                refId: C
-                type: threshold
-          noDataState: OK
-          execErrState: Error
-          for: 1m
-          annotations:
-            summary: Swap Usage > 80% for {{ $labels.instance }}
-          labels:
-            severity: warning
-          isPaused: false
-          notification_settings:
-            receiver: NTFY
-        - uid: dep5ni5zxwetcb
-          title: SwapOverThreshhold-Critical
-          condition: C
-          data:
-            - refId: A
-              relativeTimeRange:
-                from: 600
-                to: 0
-              datasourceUid: cei7lwvco16o0b
-              model:
-                editorMode: code
-                expr: ((avg_over_time(node_memory_swap_used_bytes[5m]) * 100) / node_memory_swap_size_bytes > 90) * on(instance, job) group_left (nodename) node_uname_info{nodename=~".+", job="integrations/unix"}
-                instant: true
-                intervalMs: 1000
-                legendFormat: __auto
-                maxDataPoints: 43200
-                range: false
-                refId: A
-            - refId: C
-              datasourceUid: __expr__
-              model:
-                conditions:
-                    - evaluator:
-                        params:
-                            - 0
-                        type: gt
-                      operator:
-                        type: and
-                      query:
-                        params:
-                            - C
-                      reducer:
-                        params: []
-                        type: last
-                      type: query
-                datasource:
-                    type: __expr__
-                    uid: __expr__
-                expression: A
-                intervalMs: 1000
-                maxDataPoints: 43200
-                refId: C
-                type: threshold
-          noDataState: OK
-          execErrState: Error
-          for: 1m
-          annotations:
-            summary: Swap Usage > 90% for {{ $labels.instance }}
-          labels:
-            severity: critical
-          isPaused: false
-          notification_settings:
-            receiver: NTFY
-        - uid: eeppa5j1gsv0ge
-          title: CPUOverThreshhold-Critical
-          condition: C
-          data:
-            - refId: A
-              relativeTimeRange:
-                from: 600
-                to: 0
-              datasourceUid: cei7lwvco16o0b
-              model:
-                editorMode: code
-                exemplar: false
-                expr: (100 * (1 - avg by(instance) (rate(node_cpu_seconds_total{mode="idle",job="integrations/node_exporter"}[5m])))) > 98
-                format: time_series
-                instant: true
-                intervalMs: 1000
-                legendFormat: __auto
-                maxDataPoints: 43200
-                range: false
-                refId: A
-            - refId: C
-              datasourceUid: __expr__
-              model:
-                conditions:
-                    - evaluator:
-                        params:
-                            - 0
-                        type: gt
-                      operator:
-                        type: and
-                      query:
-                        params:
-                            - C
-                      reducer:
-                        params: []
-                        type: last
-                      type: query
-                datasource:
-                    type: __expr__
-                    uid: __expr__
-                expression: A
-                intervalMs: 1000
-                maxDataPoints: 43200
-                refId: C
-                type: threshold
-          noDataState: OK
-          execErrState: Error
-          for: 5m
-          annotations:
-            summary: CPU > 90% for {{ $labels.instance }}
-          labels:
-            severity: critical
-          isPaused: false
-          notification_settings:
-            receiver: NTFY
-        - uid: feppa812o1r7ka
-          title: CPUOverThreshhold-Warn
-          condition: C
-          data:
-            - refId: A
-              relativeTimeRange:
-                from: 600
-                to: 0
-              datasourceUid: cei7lwvco16o0b
-              model:
-                editorMode: code
-                exemplar: false
-                expr: (100 * (1 - avg by(instance) (rate(node_cpu_seconds_total{mode="idle",job="integrations/node_exporter"}[5m])))) > 95
-                format: time_series
-                instant: true
-                intervalMs: 1000
-                legendFormat: __auto
-                maxDataPoints: 43200
-                range: false
-                refId: A
-            - refId: C
-              datasourceUid: __expr__
-              model:
-                conditions:
-                    - evaluator:
-                        params:
-                            - 0
-                        type: gt
-                      operator:
-                        type: and
-                      query:
-                        params:
-                            - C
-                      reducer:
-                        params: []
-                        type: last
-                      type: query
-                datasource:
-                    type: __expr__
-                    uid: __expr__
-                expression: A
-                intervalMs: 1000
-                maxDataPoints: 43200
-                refId: C
-                type: threshold
-          noDataState: OK
-          execErrState: Error
-          for: 5m
-          annotations:
-            summary: CPU > 80% for {{ $labels.instance }}
-          labels:
-            severity: warning
-          isPaused: false
-          notification_settings:
-            receiver: NTFY
-        - uid: aet06vs35zwg0c
-          title: FilesystemOverThreshhold-Warn
-          condition: C
-          data:
-            - refId: A
-              relativeTimeRange:
-                from: 600
-                to: 0
-              datasourceUid: cei7lwvco16o0b
-              model:
-                editorMode: code
-                expr: (100 - (node_filesystem_avail_bytes{fstype!~"udf|nfs.*|msdosfs|devfs|fdescfs|devfs|linprocfs|linsysfs"} * 100 / node_filesystem_size_bytes{fstype!~"udf|nfs.*|msdosfs|devfs|fdescfs|devfs|linprocfs|linsysfs"}) > 80) * on(instance, job) group_left(nodename) node_uname_info{nodename=~".+", job="integrations/unix"}
-                instant: true
-                intervalMs: 1000
-                legendFormat: __auto
-                maxDataPoints: 43200
-                range: false
-                refId: A
-            - refId: C
-              datasourceUid: __expr__
-              model:
-                conditions:
-                    - evaluator:
-                        params:
-                            - 0
-                        type: gt
-                      operator:
-                        type: and
-                      query:
-                        params:
-                            - C
-                      reducer:
-                        params: []
-                        type: last
-                      type: query
-                datasource:
-                    type: __expr__
-                    uid: __expr__
-                expression: A
-                intervalMs: 1000
-                maxDataPoints: 43200
-                refId: C
-                type: threshold
-          noDataState: OK
-          execErrState: Error
-          for: 1m
-          annotations:
-            description: '{{ $labels.mountpoint }} on {{ $labels.instance }} ({{ $labels.device }}, {{ $labels.fstype }}) is {{ printf "%.1f" $values.A.Value }}% used, over the 80% threshold.'
-            summary: Filesystem usage > 80% on {{ $labels.instance }}:{{ $labels.mountpoint }} ({{ printf "%.1f" $values.A.Value }}% used)
-          labels:
-            severity: warning
-          isPaused: false
-          notification_settings:
-            receiver: NTFY
-            group_by:
-                - grafana_folder
-                - alertname
-                - name
-        - uid: aet06xb5xedc0f
-          title: FilesystemOverThreshhold-Critical
-          condition: C
-          data:
-            - refId: A
-              relativeTimeRange:
-                from: 600
-                to: 0
-              datasourceUid: cei7lwvco16o0b
-              model:
-                editorMode: code
-                expr: (100 - (node_filesystem_avail_bytes{fstype!~"udf|nfs.*|msdosfs|devfs|fdescfs|devfs|linprocfs|linsysfs"} * 100 / node_filesystem_size_bytes{fstype!~"udf|nfs.*|msdosfs|devfs|fdescfs|devfs|linprocfs|linsysfs"}) > 90) * on(instance, job) group_left(nodename) node_uname_info{nodename=~".+", job="integrations/unix"}
-                instant: true
-                intervalMs: 1000
-                legendFormat: __auto
-                maxDataPoints: 43200
-                range: false
-                refId: A
-            - refId: C
-              datasourceUid: __expr__
-              model:
-                conditions:
-                    - evaluator:
-                        params:
-                            - 0
-                        type: gt
-                      operator:
-                        type: and
-                      query:
-                        params:
-                            - C
-                      reducer:
-                        params: []
-                        type: last
-                      type: query
-                datasource:
-                    type: __expr__
-                    uid: __expr__
-                expression: A
-                intervalMs: 1000
-                maxDataPoints: 43200
-                refId: C
-                type: threshold
-          noDataState: OK
-          execErrState: Error
-          for: 1m
-          annotations:
-            description: '{{ $labels.mountpoint }} on {{ $labels.instance }} ({{ $labels.device }}, {{ $labels.fstype }}) is {{ printf "%.1f" $values.A.Value }}% used, over the 90% threshold.'
-            summary: Filesystem usage > 90% on {{ $labels.instance }}:{{ $labels.mountpoint }} ({{ printf "%.1f" $values.A.Value }}% used)
-          labels:
-            severity: critical
-          isPaused: false
-          notification_settings:
-            receiver: NTFY
-            group_by:
-                - grafana_folder
-                - alertname
-                - name
-        - uid: afhsq441bim80d
-          title: MemoryOverThreshhold-FreeBSD-Warn
-          condition: C
-          data:
-            - refId: A
-              relativeTimeRange:
-                from: 600
-                to: 0
-              datasourceUid: cei7lwvco16o0b
-              model:
-                editorMode: code
-                expr: (node_memory_active_bytes / node_memory_size_bytes * 100) * on(instance, job) group_left (nodename) node_uname_info{nodename=~".+", job="node"}
-                instant: true
-                intervalMs: 1000
-                legendFormat: __auto
-                maxDataPoints: 43200
-                range: false
-                refId: A
-            - refId: C
-              datasourceUid: __expr__
-              model:
-                conditions:
-                    - evaluator:
-                        params:
-                            - 95
-                        type: gt
-                      operator:
-                        type: and
-                      query:
-                        params:
-                            - C
-                      reducer:
-                        params: []
-                        type: last
-                      type: query
-                datasource:
-                    type: __expr__
-                    uid: __expr__
-                expression: A
-                intervalMs: 1000
-                maxDataPoints: 43200
-                refId: C
-                type: threshold
-          noDataState: OK
-          execErrState: Error
-          for: 1m
-          annotations:
-            summary: Memory Usage > 95% for {{ $labels.instance }}
-          labels:
-            severity: warning
-          isPaused: false
-          notification_settings:
-            receiver: NTFY
         - uid: efhsq663r4m4ga
           title: MemoryOverThreshhold-FreeBSD-Critical
           condition: C
@@ -3067,65 +3875,6 @@ groups:
           isPaused: false
           notification_settings:
             receiver: NTFY
-        - uid: dflmamdh9x0xsb
-          title: Podman Container Status
-          condition: C
-          data:
-            - refId: A
-              relativeTimeRange:
-                from: 600
-                to: 0
-              datasourceUid: cei7lwvco16o0b
-              model:
-                editorMode: code
-                expr: sum by(name) ((podman_container_info{name!~".+-infra"} and podman_container_info{name!~".+_pascal"}) * on(id) group_right (name) podman_container_health)
-                instant: true
-                intervalMs: 1000
-                legendFormat: __auto
-                maxDataPoints: 43200
-                range: false
-                refId: A
-            - refId: C
-              queryType: expression
-              datasourceUid: __expr__
-              model:
-                conditions:
-                    - evaluator:
-                        params:
-                            - 0
-                        type: gt
-                      operator:
-                        type: and
-                      query:
-                        params:
-                            - C
-                      reducer:
-                        params: []
-                        type: last
-                      type: query
-                datasource:
-                    type: __expr__
-                    uid: __expr__
-                expression: A
-                intervalMs: 1000
-                maxDataPoints: 43200
-                refId: C
-                type: threshold
-          noDataState: OK
-          execErrState: Error
-          for: 1m
-          annotations:
-            description: Podman Container Status {{ $labels.name }}
-            summary: Podman Container Status {{ $labels.name }}
-          labels:
-            severity: warning
-          isPaused: false
-          notification_settings:
-            receiver: NTFY
-            group_by:
-                - grafana_folder
-                - alertname
-                - name
         - uid: efzc3ig4g70u8e
           title: SystemdServiceRestartRate
           condition: C
@@ -3620,116 +4369,6 @@ groups:
           isPaused: false
           notification_settings:
             receiver: NTFY
-        - uid: cg0mdpp7as8hsd
-          title: OsEol70d
-          condition: C
-          data:
-            - refId: A
-              relativeTimeRange:
-                from: 600
-                to: 0
-              datasourceUid: cei7lwvco16o0b
-              model:
-                editorMode: code
-                expr: min by (host, product, cycle) (os_eol_days_remaining) < 70
-                instant: true
-                intervalMs: 1000
-                legendFormat: __auto
-                maxDataPoints: 43200
-                range: false
-                refId: A
-            - refId: C
-              queryType: expression
-              datasourceUid: __expr__
-              model:
-                conditions:
-                    - evaluator:
-                        params:
-                            - 0
-                        type: gt
-                      operator:
-                        type: and
-                      query:
-                        params:
-                            - C
-                      reducer:
-                        params: []
-                        type: last
-                      type: query
-                datasource:
-                    type: __expr__
-                    uid: __expr__
-                expression: A
-                intervalMs: 1000
-                maxDataPoints: 43200
-                refId: C
-                type: threshold
-          noDataState: OK
-          execErrState: Error
-          for: 1h
-          annotations:
-            description: 'Operating system end of life in under 70 days: two four-week patch windows plus two weeks to prepare. Schedule the release upgrade (guests first, soundwave last) in the next window. Source: os_eol_days_remaining from os-eol-check.py on soundwave; dates from endoflife.date.'
-            summary: '{{ $labels.host }} runs {{ $labels.product }} {{ $labels.cycle }}, end of life in {{ $values.A | printf "%.0f" }} days'
-          labels:
-            severity: info
-          isPaused: false
-          notification_settings:
-            receiver: NTFY
-        - uid: bg0mdtima6xa8d
-          title: OsEol30d
-          condition: C
-          data:
-            - refId: A
-              relativeTimeRange:
-                from: 600
-                to: 0
-              datasourceUid: cei7lwvco16o0b
-              model:
-                editorMode: code
-                expr: min by (host, product, cycle) (os_eol_days_remaining) < 30
-                instant: true
-                intervalMs: 1000
-                legendFormat: __auto
-                maxDataPoints: 43200
-                range: false
-                refId: A
-            - refId: C
-              queryType: expression
-              datasourceUid: __expr__
-              model:
-                conditions:
-                    - evaluator:
-                        params:
-                            - 0
-                        type: gt
-                      operator:
-                        type: and
-                      query:
-                        params:
-                            - C
-                      reducer:
-                        params: []
-                        type: last
-                      type: query
-                datasource:
-                    type: __expr__
-                    uid: __expr__
-                expression: A
-                intervalMs: 1000
-                maxDataPoints: 43200
-                refId: C
-                type: threshold
-          noDataState: OK
-          execErrState: Error
-          for: 1h
-          annotations:
-            description: 'Operating system end of life in under 30 days: one patch window left. The upgrade must be booked for the coming window; after this date the host stops receiving security patches.'
-            summary: '{{ $labels.host }} runs {{ $labels.product }} {{ $labels.cycle }}, end of life in {{ $values.A | printf "%.0f" }} days'
-          labels:
-            severity: warning
-          isPaused: false
-          notification_settings:
-            receiver: NTFY
         - uid: dg0mdvewm9g5cc
           title: OsEol7d
           condition: C
@@ -3782,116 +4421,6 @@ groups:
             summary: '{{ $labels.host }} runs {{ $labels.product }} {{ $labels.cycle }}, end of life in {{ $values.A | printf "%.0f" }} days'
           labels:
             severity: critical
-          isPaused: false
-          notification_settings:
-            receiver: NTFY
-        - uid: dg0mdxppwkp34e
-          title: OsEolCycleUnknown
-          condition: C
-          data:
-            - refId: A
-              relativeTimeRange:
-                from: 600
-                to: 0
-              datasourceUid: cei7lwvco16o0b
-              model:
-                editorMode: code
-                expr: os_eol_cycle_unknown == 1
-                instant: true
-                intervalMs: 1000
-                legendFormat: __auto
-                maxDataPoints: 43200
-                range: false
-                refId: A
-            - refId: C
-              queryType: expression
-              datasourceUid: __expr__
-              model:
-                conditions:
-                    - evaluator:
-                        params:
-                            - 0
-                        type: gt
-                      operator:
-                        type: and
-                      query:
-                        params:
-                            - C
-                      reducer:
-                        params: []
-                        type: last
-                      type: query
-                datasource:
-                    type: __expr__
-                    uid: __expr__
-                expression: A
-                intervalMs: 1000
-                maxDataPoints: 43200
-                refId: C
-                type: threshold
-          noDataState: OK
-          execErrState: Error
-          for: 1h
-          annotations:
-            description: endoflife.date lists no such release for this host's operating system, so no end-of-life date can be computed. Usually a release newer than the site's data, or a product renamed; check the product and cycle labels against https://endoflife.date/api/<product>.json and fix the product map in roles/soundwave/vars/main.yaml if needed. Never read this as "no end of life".
-            summary: '{{ $labels.host }} runs {{ $labels.product }} {{ $labels.cycle }}, end of life in {{ $values.A | printf "%.0f" }} days'
-          labels:
-            severity: warning
-          isPaused: false
-          notification_settings:
-            receiver: NTFY
-        - uid: fg0mdz91c4h6od
-          title: OsEolCheckFailed
-          condition: C
-          data:
-            - refId: A
-              relativeTimeRange:
-                from: 600
-                to: 0
-              datasourceUid: cei7lwvco16o0b
-              model:
-                editorMode: code
-                expr: os_eol_check_success
-                instant: true
-                intervalMs: 1000
-                legendFormat: __auto
-                maxDataPoints: 43200
-                range: false
-                refId: A
-            - refId: C
-              queryType: expression
-              datasourceUid: __expr__
-              model:
-                conditions:
-                    - evaluator:
-                        params:
-                            - 1
-                        type: lt
-                      operator:
-                        type: and
-                      query:
-                        params:
-                            - C
-                      reducer:
-                        params: []
-                        type: last
-                      type: query
-                datasource:
-                    type: __expr__
-                    uid: __expr__
-                expression: A
-                intervalMs: 1000
-                maxDataPoints: 43200
-                refId: C
-                type: threshold
-          noDataState: Alerting
-          execErrState: Error
-          for: 1h
-          annotations:
-            description: The daily check on soundwave failed or has not run for two days, so every OsEol* gauge is stale. Read /var/log/all.log on soundwave for os-eol-check lines (Prometheus unreachable, endoflife.date unreachable, or the cron.d entry gone), then run sudo /usr/local/bin/os-eol-check.py by hand.
-            summary: '{{ $labels.host }} runs {{ $labels.product }} {{ $labels.cycle }}, end of life in {{ $values.A | printf "%.0f" }} days'
-          labels:
-            severity: warning
           isPaused: false
           notification_settings:
             receiver: NTFY
@@ -4236,6 +4765,54 @@ groups:
                 - alertname
                 - grafana_folder
                 - hostname
+        - uid: eg2j455ozp3b4d
+          title: UniFiDeviceStoppedReporting
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: cei7lwvco16o0b
+              model:
+                editorMode: code
+                expr: group by (name) (max_over_time(unpoller_device_uptime_seconds[1d])) unless group by (name) (unpoller_device_uptime_seconds)
+                instant: true
+                intervalMs: 1000
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - C
+                      reducer:
+                        type: last
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          for: 15m
+          annotations:
+            description: 'unpoller_device_uptime_seconds for {{ $labels.name }} was in Mimir within the last day and has been absent for 15m: the device is offline or adopted away, or unpoller itself stopped (then every device vanishes together and ScrapeTargetDown fires for job unifipoller). UniFiRebooted only fires once the device is back; this covers a device that stays dark. Check the device in the UniFi console (unifi.ui.com); for a switch, its uplink and PoE source. Clears by itself one day after the series disappeared, which does not mean it recovered.'
+            summary: UniFi device {{ $labels.name }} stopped reporting to unpoller
+          labels:
+            severity: warning
+          isPaused: false
+          notification_settings:
+            receiver: NTFY
         - uid: bg1uspojzf0n4c
           title: UniFiRebooted
           condition: C
