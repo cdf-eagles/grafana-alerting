@@ -2654,6 +2654,9 @@ groups:
           isPaused: false
           notification_settings:
             receiver: NTFY-minimal
+            group_by:
+                - grafana_folder
+                - alertname
     - orgId: 2
       name: os
       folder: Alert Rules
@@ -3047,6 +3050,10 @@ groups:
           isPaused: false
           notification_settings:
             receiver: NTFY
+            group_by:
+                - grafana_folder
+                - alertname
+                - instance
         - uid: aet06xb5xedc0f
           title: FilesystemOverThreshhold-Critical
           condition: C
@@ -3095,6 +3102,10 @@ groups:
           isPaused: false
           notification_settings:
             receiver: NTFY
+            group_by:
+                - grafana_folder
+                - alertname
+                - instance
         - uid: afhsq441bim80d
           title: MemoryOverThreshhold-FreeBSD-Warn
           condition: C
@@ -3191,6 +3202,10 @@ groups:
           isPaused: false
           notification_settings:
             receiver: NTFY
+            group_by:
+                - grafana_folder
+                - alertname
+                - instance
         - uid: cg0mdpp7as8hsd
           title: OsEol70d
           condition: C
