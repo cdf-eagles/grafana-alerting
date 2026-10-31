@@ -1539,244 +1539,6 @@ groups:
           isPaused: false
           notification_settings:
             receiver: NTFY
-        - uid: ag2j3wd2ejjlsf
-          title: UpsOnBattery
-          condition: C
-          data:
-            - refId: A
-              relativeTimeRange:
-                from: 600
-                to: 0
-              datasourceUid: cei7lwvco16o0b
-              model:
-                editorMode: code
-                expr: network_ups_tools_ups_status{flag="OB"} == 1
-                instant: true
-                intervalMs: 1000
-                maxDataPoints: 43200
-                range: false
-                refId: A
-            - refId: C
-              datasourceUid: __expr__
-              model:
-                conditions:
-                    - evaluator:
-                        params:
-                            - 0
-                        type: gt
-                      operator:
-                        type: and
-                      query:
-                        params:
-                            - C
-                      reducer:
-                        type: last
-                expression: A
-                intervalMs: 1000
-                maxDataPoints: 43200
-                refId: C
-                type: threshold
-          noDataState: OK
-          execErrState: Error
-          for: 2m
-          annotations:
-            description: 'network_ups_tools_ups_status{flag="OB"} has been 1 for 2 minutes: mains power to {{ $labels.ups }} is gone and soundwave and the switches are draining the battery. Short dips under 2 minutes do not fire this. Watch UpsLowBattery and network_ups_tools_battery_charge (mimir) for the remaining runtime; upsc on the NUT host shows battery.runtime. Nothing shuts soundwave down automatically: decide before the battery empties. No data is treated as OK here because UpsMetricsVanished covers a missing exporter.'
-            summary: UPS {{ $labels.ups }} is on battery
-          labels:
-            severity: critical
-          isPaused: false
-          notification_settings:
-            receiver: NTFY
-        - uid: ag2j3wdswgrnkc
-          title: UpsLowBattery
-          condition: C
-          data:
-            - refId: A
-              relativeTimeRange:
-                from: 600
-                to: 0
-              datasourceUid: cei7lwvco16o0b
-              model:
-                editorMode: code
-                expr: network_ups_tools_ups_status{flag="LB"} == 1
-                instant: true
-                intervalMs: 1000
-                maxDataPoints: 43200
-                range: false
-                refId: A
-            - refId: C
-              datasourceUid: __expr__
-              model:
-                conditions:
-                    - evaluator:
-                        params:
-                            - 0
-                        type: gt
-                      operator:
-                        type: and
-                      query:
-                        params:
-                            - C
-                      reducer:
-                        type: last
-                expression: A
-                intervalMs: 1000
-                maxDataPoints: 43200
-                refId: C
-                type: threshold
-          noDataState: OK
-          execErrState: Error
-          annotations:
-            description: 'network_ups_tools_ups_status{flag="LB"} is 1: the UPS has reached its low-battery threshold and will cut power within minutes. If soundwave is still up, stop the guests and shut it down now (sudo shutdown -p now) before the pools lose power uncleanly. Fires at once, no pending period.'
-            summary: UPS {{ $labels.ups }} battery is low
-          labels:
-            severity: critical
-          isPaused: false
-          notification_settings:
-            receiver: NTFY
-        - uid: fg2j3wei2xx4wa
-          title: UpsBatteryChargeLow
-          condition: C
-          data:
-            - refId: A
-              relativeTimeRange:
-                from: 600
-                to: 0
-              datasourceUid: cei7lwvco16o0b
-              model:
-                editorMode: code
-                expr: network_ups_tools_battery_charge < 50
-                instant: true
-                intervalMs: 1000
-                maxDataPoints: 43200
-                range: false
-                refId: A
-            - refId: C
-              datasourceUid: __expr__
-              model:
-                conditions:
-                    - evaluator:
-                        params:
-                            - 0
-                        type: gt
-                      operator:
-                        type: and
-                      query:
-                        params:
-                            - C
-                      reducer:
-                        type: last
-                expression: A
-                intervalMs: 1000
-                maxDataPoints: 43200
-                refId: C
-                type: threshold
-          noDataState: OK
-          execErrState: Error
-          for: 5m
-          annotations:
-            description: 'network_ups_tools_battery_charge has been under 50% for 5 minutes. On battery this is the halfway point of the runtime; on mains it means the battery is not recharging or is worn (see UpsReplaceBattery). Check upsc on the NUT host: ups.status, battery.runtime, battery.charge.'
-            summary: UPS {{ $labels.ups }} battery charge is {{ printf "%.0f" $values.A.Value }}%
-          labels:
-            severity: warning
-          isPaused: false
-          notification_settings:
-            receiver: NTFY
-        - uid: bg2j3wf8xcmwwf
-          title: UpsReplaceBattery
-          condition: C
-          data:
-            - refId: A
-              relativeTimeRange:
-                from: 600
-                to: 0
-              datasourceUid: cei7lwvco16o0b
-              model:
-                editorMode: code
-                expr: network_ups_tools_ups_status{flag="RB"} == 1
-                instant: true
-                intervalMs: 1000
-                maxDataPoints: 43200
-                range: false
-                refId: A
-            - refId: C
-              datasourceUid: __expr__
-              model:
-                conditions:
-                    - evaluator:
-                        params:
-                            - 0
-                        type: gt
-                      operator:
-                        type: and
-                      query:
-                        params:
-                            - C
-                      reducer:
-                        type: last
-                expression: A
-                intervalMs: 1000
-                maxDataPoints: 43200
-                refId: C
-                type: threshold
-          noDataState: OK
-          execErrState: Error
-          annotations:
-            description: 'network_ups_tools_ups_status{flag="RB"} is 1: the UPS self-test judged the battery worn. The runtime on the next outage is unknown; order a replacement and run a calibration after fitting it (upscmd -l on the NUT host lists the commands).'
-            summary: UPS {{ $labels.ups }} reports replace battery
-          labels:
-            severity: warning
-          isPaused: false
-          notification_settings:
-            receiver: NTFY
-        - uid: bg2j3wfzu991ce
-          title: UpsMetricsVanished
-          condition: C
-          data:
-            - refId: A
-              relativeTimeRange:
-                from: 600
-                to: 0
-              datasourceUid: cei7lwvco16o0b
-              model:
-                editorMode: code
-                expr: group by (ups) (max_over_time(network_ups_tools_ups_status{flag="OL"}[1d])) unless group by (ups) (network_ups_tools_ups_status{flag="OL"})
-                instant: true
-                intervalMs: 1000
-                maxDataPoints: 43200
-                range: false
-                refId: A
-            - refId: C
-              datasourceUid: __expr__
-              model:
-                conditions:
-                    - evaluator:
-                        params:
-                            - 0
-                        type: gt
-                      operator:
-                        type: and
-                      query:
-                        params:
-                            - C
-                      reducer:
-                        type: last
-                expression: A
-                intervalMs: 1000
-                maxDataPoints: 43200
-                refId: C
-                type: threshold
-          noDataState: OK
-          execErrState: Error
-          for: 15m
-          annotations:
-            description: 'network_ups_tools_ups_status for {{ $labels.ups }} was in Mimir within the last day and has been absent for 15m: nut_exporter on podman01 stopped, upsd is unreachable, or the USB link to the UPS dropped. While this fires the UpsOnBattery and UpsLowBattery rules are blind. Check: Uptime Kuma monitor Nut Exporter (port 9199), sudo journalctl -u nut-exporter -n 30 on podman01, upsc on the NUT host. Clears by itself one day after the series disappeared, which does not mean it recovered.'
-            summary: UPS {{ $labels.ups }} stopped reporting to Mimir
-          labels:
-            severity: warning
-          isPaused: false
-          notification_settings:
-            receiver: NTFY
         - uid: cfcn9zmxsqosgf
           title: IPMI-Fan-RPM-Critical
           condition: C
@@ -4992,6 +4754,249 @@ groups:
                 - alertname
                 - grafana_folder
                 - name
+    - orgId: 2
+      name: ups
+      folder: Alert Rules
+      interval: 30s
+      rules:
+        - uid: ag2j3wd2ejjlsf
+          title: UpsOnBattery
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: cei7lwvco16o0b
+              model:
+                editorMode: code
+                expr: network_ups_tools_ups_status{flag="OB"} == 1
+                instant: true
+                intervalMs: 1000
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - C
+                      reducer:
+                        type: last
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          for: 2m
+          annotations:
+            description: 'network_ups_tools_ups_status{flag="OB"} has been 1 for 2 minutes (rule group ups, evaluated every 30 seconds): mains power to {{ $labels.ups }} is gone and soundwave and the switches are draining the battery. Short dips under 2 minutes do not fire this; upssched on soundwave sends its own ntfy alert after 30 seconds on battery. Watch UpsLowBattery and network_ups_tools_battery_charge (mimir) for the remaining runtime; upsc on the NUT host shows battery.runtime. upsmon on soundwave shuts soundwave down (shutdown -p +60s) when the UPS reports low battery (LB); stop the guests cleanly before that if the outage will last. No data is treated as OK here because UpsMetricsVanished covers a missing exporter.'
+            summary: UPS {{ $labels.ups }} is on battery
+          labels:
+            severity: critical
+          isPaused: false
+          notification_settings:
+            receiver: NTFY
+        - uid: ag2j3wdswgrnkc
+          title: UpsLowBattery
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: cei7lwvco16o0b
+              model:
+                editorMode: code
+                expr: network_ups_tools_ups_status{flag="LB"} == 1
+                instant: true
+                intervalMs: 1000
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - C
+                      reducer:
+                        type: last
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          annotations:
+            description: 'network_ups_tools_ups_status{flag="LB"} is 1: the UPS has reached its low-battery threshold and will cut power within minutes. If soundwave is still up, stop the guests and shut it down now (sudo shutdown -p now) before the pools lose power uncleanly. Fires at once, no pending period.'
+            summary: UPS {{ $labels.ups }} battery is low
+          labels:
+            severity: critical
+          isPaused: false
+          notification_settings:
+            receiver: NTFY
+        - uid: fg2j3wei2xx4wa
+          title: UpsBatteryChargeLow
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: cei7lwvco16o0b
+              model:
+                editorMode: code
+                expr: network_ups_tools_battery_charge < 50
+                instant: true
+                intervalMs: 1000
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - C
+                      reducer:
+                        type: last
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          for: 5m
+          annotations:
+            description: 'network_ups_tools_battery_charge has been under 50% for 5 minutes. On battery this is the halfway point of the runtime; on mains it means the battery is not recharging or is worn (see UpsReplaceBattery). Check upsc on the NUT host: ups.status, battery.runtime, battery.charge.'
+            summary: UPS {{ $labels.ups }} battery charge is {{ printf "%.0f" $values.A.Value }}%
+          labels:
+            severity: warning
+          isPaused: false
+          notification_settings:
+            receiver: NTFY
+        - uid: bg2j3wf8xcmwwf
+          title: UpsReplaceBattery
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: cei7lwvco16o0b
+              model:
+                editorMode: code
+                expr: network_ups_tools_ups_status{flag="RB"} == 1
+                instant: true
+                intervalMs: 1000
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - C
+                      reducer:
+                        type: last
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          annotations:
+            description: 'network_ups_tools_ups_status{flag="RB"} is 1: the UPS self-test judged the battery worn. The runtime on the next outage is unknown; order a replacement and run a calibration after fitting it (upscmd -l on the NUT host lists the commands).'
+            summary: UPS {{ $labels.ups }} reports replace battery
+          labels:
+            severity: warning
+          isPaused: false
+          notification_settings:
+            receiver: NTFY
+        - uid: bg2j3wfzu991ce
+          title: UpsMetricsVanished
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: cei7lwvco16o0b
+              model:
+                editorMode: code
+                expr: group by (ups) (max_over_time(network_ups_tools_ups_status{flag="OL"}[1d])) unless group by (ups) (network_ups_tools_ups_status{flag="OL"})
+                instant: true
+                intervalMs: 1000
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - C
+                      reducer:
+                        type: last
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          for: 15m
+          annotations:
+            description: 'network_ups_tools_ups_status for {{ $labels.ups }} was in Mimir within the last day and has been absent for 15m: nut_exporter on podman01 stopped, upsd is unreachable, or the USB link to the UPS dropped. While this fires the UpsOnBattery and UpsLowBattery rules are blind. Check: Uptime Kuma monitor Nut Exporter (port 9199), sudo journalctl -u nut-exporter -n 30 on podman01, upsc on the NUT host. Clears by itself one day after the series disappeared, which does not mean it recovered.'
+            summary: UPS {{ $labels.ups }} stopped reporting to Mimir
+          labels:
+            severity: warning
+          isPaused: false
+          notification_settings:
+            receiver: NTFY
     - orgId: 2
       name: zfs
       folder: Alert Rules
