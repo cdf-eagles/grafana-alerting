@@ -160,7 +160,7 @@ groups:
               datasourceUid: cei7lwvco16o0b
               model:
                 editorMode: code
-                expr: probe_success{job=~"blackbox_(http|tls|ldaps|healthchecks)", instance!="https://vault.sleem.net/v1/sys/health"} == 0
+                expr: probe_success{job=~"blackbox_(http|tls|ldaps|healthchecks|ftp)", instance!="https://vault.sleem.net/v1/sys/health"} == 0
                 instant: true
                 intervalMs: 1000
                 maxDataPoints: 43200
@@ -190,7 +190,7 @@ groups:
           execErrState: Error
           for: 5m
           annotations:
-            description: 'probe_success has been 0 for 5 minutes for {{ $labels.instance }} in job {{ $labels.job }}. blackbox_tls: the TLS handshake or certificate chain failed (expired, wrong name, or the vhost is gone), not only expiry. blackbox_http: the page did not return its expected status. blackbox_ldaps: LDAPS on ldap or ldap02 refused. blackbox_healthchecks: a Mimir, Loki, Tempo, unpoller or exportarr /metrics endpoint on podman01 is down. Read the failure in Explore (mimir): probe_failed_due_to_regex, probe_http_status_code and probe_ssl_last_chain_info for the same instance, then curl -vk the target from podman01. The vault health probe is excluded here; OpenBaoSealedOrDown owns it. A probe whose series vanished is ScrapeTargetVanished''s job.'
+            description: 'probe_success has been 0 for 5 minutes for {{ $labels.instance }} in job {{ $labels.job }}. blackbox_tls: the TLS handshake or certificate chain failed (expired, wrong name, or the vhost is gone), not only expiry. blackbox_http: the page did not return its expected status. blackbox_ldaps: LDAPS on ldap or ldap02 refused. blackbox_healthchecks: a Mimir, Loki, Tempo, unpoller or exportarr /metrics endpoint on podman01 is down. blackbox_ftp: Silo''s FTP server on podman01 did not send its 220 greeting or its 221 reply to QUIT, so gs-silo is down or the published port 21 accepts with nothing behind it; the Netatmo cameras cannot upload (item 448). Read the failure in Explore (mimir): probe_failed_due_to_regex, probe_http_status_code and probe_ssl_last_chain_info for the same instance, then curl -vk the target from podman01 (for blackbox_ftp: nc 10.0.1.231 21). The vault health probe is excluded here; OpenBaoSealedOrDown owns it. A probe whose series vanished is ScrapeTargetVanished''s job.'
             summary: Blackbox probe of {{ $labels.instance }} ({{ $labels.job }}) is failing
           labels:
             severity: warning
@@ -2359,6 +2359,54 @@ groups:
           annotations:
             description: 'job integrations/syslog holds lines from {{ $labels.hostname }} within the last 24 hours but none in the last 2 hours. Only unifi-dm01 is watched: the gateway logs continuously (firewall, DHCP, IDS), while the switches and APs can be silent for hours and are covered by UniFiDeviceStoppedReporting (unpoller) instead. Causes: remote syslog turned off in the UniFi console, or soundwave''s Alloy syslog listener (TCP 51893 / UDP 51898) stopped. On soundwave: sudo service alloy status; sockstat -l | grep 5189. Clears when lines resume.'
             summary: '{{ $labels.hostname }} has sent no syslog to soundwave for over 2 hours'
+          labels:
+            severity: warning
+          isPaused: false
+          notification_settings:
+            receiver: NTFY
+        - uid: bg2yjbkcauuiof
+          title: CameraUploadSilence
+          condition: C
+          data:
+            - refId: A
+              queryType: instant
+              relativeTimeRange:
+                from: 1209600
+                to: 0
+              datasourceUid: cefqyqv6j9c00e
+              model:
+                editorMode: code
+                expr: sum(count_over_time({job="integrations/syslog", hostname="unifi-dm01"} |= "IoT to Silo FTP" |= "SRC=10.0.30.49 " |= " DPT=21 " |= " SYN " [14d])) or vector(0)
+                intervalMs: 1000
+                maxDataPoints: 43200
+                queryType: instant
+                refId: A
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 1
+                        type: lt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - C
+                      reducer:
+                        type: last
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          for: 10m
+          annotations:
+            description: 'The UniFi gateway''s firewall log (policy "IoT to Silo FTP", job integrations/syslog) holds no new TCP connection from camera02 (10.0.30.49) to Silo''s FTP control port (10.0.1.231:21) in the last 14 days (item 448; 14 days decided 2026-11-01). The camera uploads only when it detects an event, so a long quiet spell at home can fire this. It also fires if the gateway stops logging (UniFiGatewayStoppedLogging) or the policy''s logging is turned off. A connection is not a clip: list the camera02 bucket in Silo to see what arrived. camera01 is not watched until Netatmo support restores it. Check the Netatmo app''s FTP settings (server 10.0.1.231, port 21, folder camera02), Uptime Kuma monitors 106 and 107, and BlackboxProbeFailed for job blackbox_ftp.'
+            summary: camera02 has opened no FTP connection to Silo in 14 days
           labels:
             severity: warning
           isPaused: false
