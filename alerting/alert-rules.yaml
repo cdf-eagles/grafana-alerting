@@ -341,6 +341,166 @@ groups:
           isPaused: false
           notification_settings:
             receiver: NTFY
+        - uid: eg30vyfrgnq4gc
+          title: SiloFreeCapacityLow
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: cei7lwvco16o0b
+              model:
+                expr: min(minio_cluster_capacity_usable_free_bytes{job="silo_cluster"} / minio_cluster_capacity_usable_total_bytes{job="silo_cluster"})
+                instant: true
+                intervalMs: 1000
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0.15
+                        type: lt
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: NoData
+          execErrState: Error
+          for: 30m
+          annotations:
+            description: 'Usable free space on Silo''s data volume (gs-silo on podman01, an NFS share on soundwave''s ZFS pool) has been below 15% for 30m. Mimir, Loki, Tempo and the camera buckets share it. Check: minio_cluster_capacity_usable_free_bytes{job="silo_cluster"} in Explore (mimir), zfs list on soundwave, and Mimir and Loki retention. Item 457.'
+            summary: Silo has {{ humanizePercentage $values.A.Value }} of its capacity free
+          labels:
+            severity: warning
+          isPaused: false
+          notification_settings:
+            receiver: NTFY
+        - uid: fg30vygjp0etcd
+          title: SiloScannerStale
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: cei7lwvco16o0b
+              model:
+                expr: max(minio_bucket_usage_last_activity_nano_seconds{job="silo_bucket"}) / 3.6e12
+                instant: true
+                intervalMs: 1000
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 24
+                        type: gt
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: NoData
+          execErrState: Error
+          for: 1h
+          annotations:
+            description: Silo's data scanner has not refreshed its data-usage cache for more than 24h (minio_bucket_usage_last_activity_nano_seconds{job="silo_bucket"}). The scanner drives the bucket counts and sizes and applies the 30-day expiry on camera01 and camera02, so a stalled scanner stops all three. Restarts of gs-silo (the :latest auto-update) can lengthen a cycle. The 24h threshold is provisional until a day of data shows the normal cycle length (item 457).
+            summary: Silo's usage data is {{ printf "%.1f" $values.A.Value }} hours old
+          labels:
+            severity: warning
+          isPaused: false
+          notification_settings:
+            receiver: NTFY
+        - uid: fg30vyh9kgjr4a
+          title: CameraBucketNoNewObject
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: cei7lwvco16o0b
+              model:
+                expr: time() - max by (bucket) (silo_bucket_newest_object_timestamp_seconds{job="node", bucket="camera02"})
+                instant: true
+                intervalMs: 1000
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 1.2096e+06
+                        type: gt
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: Alerting
+          execErrState: Error
+          for: 1h
+          annotations:
+            description: 'The newest object in Silo''s {{ $labels.bucket }} bucket is more than 14 days old, from silo-bucket-metrics.timer''s listing on podman01 (silo_bucket_newest_object_timestamp_seconds). No data means the bucket is empty or the listing failed: check silo_bucket_listing_success and journalctl -u silo-bucket-metrics.service on podman01. Complements CameraUploadSilence, which watches the camera''s FTP connections in the gateway log. Item 457.'
+            summary: No new clip in {{ $labels.bucket }} for {{ humanizeDuration $values.A.Value }}
+          labels:
+            severity: warning
+          isPaused: false
+          notification_settings:
+            receiver: NTFY
+        - uid: eg30vyhygy3uoa
+          title: CameraBucketExpiryStalled
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: cei7lwvco16o0b
+              model:
+                expr: time() - max by (bucket) (silo_bucket_oldest_object_timestamp_seconds{job="node", bucket=~"camera0[12]"})
+                instant: true
+                intervalMs: 1000
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 2.6784e+06
+                        type: gt
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          for: 1h
+          annotations:
+            description: 'The oldest object in Silo''s {{ $labels.bucket }} bucket is older than 31 days (the 30-day expiry plus a day), from silo-bucket-metrics.timer''s listing on podman01 (silo_bucket_oldest_object_timestamp_seconds), so the lifecycle rule expire-after-days is not deleting. Check SiloScannerStale (the scanner applies the expiry) and, in gs-silo as root, mc ilm rule ls silo/{{ $labels.bucket }}. No data is OK: an empty bucket has no oldest object. Item 457.'
+            summary: '{{ $labels.bucket }} holds a clip {{ humanizeDuration $values.A.Value }} old'
+          labels:
+            severity: warning
+          isPaused: false
+          notification_settings:
+            receiver: NTFY
         - uid: dfbc7300cts74c
           title: MariaDBConnectionPoolNearLimit
           condition: C
