@@ -5565,3 +5565,596 @@ groups:
             __converted_prometheus_rule__: "true"
             severity: warning
           isPaused: false
+    - orgId: 2
+      name: cybris
+      folder: Security
+      interval: 1m
+      rules:
+        - uid: dg305oi6ny2gwe
+          title: CybrisZoneTransferRefused
+          condition: C
+          data:
+            - refId: A
+              queryType: instant
+              relativeTimeRange:
+                from: 900
+                to: 0
+              datasourceUid: cefqyqv6j9c00e
+              model:
+                expr: sum by (instance, client) (count_over_time({instance=~".+\\.cybris\\.net", filename="/var/log/named/client_security.log"} |= "zone transfer" |= "denied" | regexp "client @\\S+ (?P<client>[0-9a-fA-F.:]+)#" [15m]))
+                intervalMs: 1000
+                maxDataPoints: 43200
+                queryType: instant
+                refId: A
+            - refId: B
+              datasourceUid: __expr__
+              model:
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                reducer: last
+                refId: B
+                settings:
+                    mode: dropNN
+                type: reduce
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 5
+                        type: gt
+                expression: B
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          annotations:
+            description: 'Rule designed in backlog item 193, built in item 397. Source: /var/log/named/client_security.log.'
+            summary: '{{ $labels.instance }}: more than 5 denied zone transfer requests from {{ $labels.client }} in 15 minutes'
+          labels:
+            area: security
+            severity: warning
+          isPaused: false
+        - uid: fg305panyrny8b
+          title: CybrisDynamicUpdateRefused
+          condition: C
+          data:
+            - refId: A
+              queryType: instant
+              relativeTimeRange:
+                from: 900
+                to: 0
+              datasourceUid: cefqyqv6j9c00e
+              model:
+                expr: sum by (instance) (count_over_time({instance=~".+\\.cybris\\.net", filename="/var/log/named/ddns.log"} |~ "update .*(denied|refused)|update failed" [15m]))
+                intervalMs: 1000
+                maxDataPoints: 43200
+                queryType: instant
+                refId: A
+            - refId: B
+              datasourceUid: __expr__
+              model:
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                reducer: last
+                refId: B
+                settings:
+                    mode: dropNN
+                type: reduce
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                expression: B
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          annotations:
+            description: 'Rule designed in backlog item 193, built in item 397. Source: /var/log/named/ddns.log.'
+            summary: '{{ $labels.instance }}: dynamic DNS update denied, refused or failed in the last 15 minutes'
+          labels:
+            area: security
+            severity: warning
+          isPaused: false
+        - uid: fg305ph60969sc
+          title: CybrisTSIGFailure
+          condition: C
+          data:
+            - refId: A
+              queryType: instant
+              relativeTimeRange:
+                from: 900
+                to: 0
+              datasourceUid: cefqyqv6j9c00e
+              model:
+                expr: sum by (instance) (count_over_time({instance=~".+\\.cybris\\.net", filename=~"/var/log/named/(client_security|ddns|named)\\.log"} |~ "tsig verify failure|invalid signature|BADKEY|BADSIG|BADTIME" [15m]))
+                intervalMs: 1000
+                maxDataPoints: 43200
+                queryType: instant
+                refId: A
+            - refId: B
+              datasourceUid: __expr__
+              model:
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                reducer: last
+                refId: B
+                settings:
+                    mode: dropNN
+                type: reduce
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                expression: B
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          annotations:
+            description: 'Rule designed in backlog item 193, built in item 397. Sources: client_security.log, ddns.log, named.log.'
+            summary: '{{ $labels.instance }}: TSIG verification failure in the last 15 minutes'
+          labels:
+            area: security
+            severity: critical
+          isPaused: false
+        - uid: ag305pp06s8hsa
+          title: CybrisDNSSECSigningError
+          condition: C
+          data:
+            - refId: A
+              queryType: instant
+              relativeTimeRange:
+                from: 1800
+                to: 0
+              datasourceUid: cefqyqv6j9c00e
+              model:
+                expr: sum by (instance) (count_over_time({instance=~".+\\.cybris\\.net", filename="/var/log/named/dnssec.log"} |~ "(?i)error|failed|expired" != "validating" [30m]))
+                intervalMs: 1000
+                maxDataPoints: 43200
+                queryType: instant
+                refId: A
+            - refId: B
+              datasourceUid: __expr__
+              model:
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                reducer: last
+                refId: B
+                settings:
+                    mode: dropNN
+                type: reduce
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                expression: B
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          annotations:
+            description: 'Rule designed in backlog item 193, built in item 397. Source: /var/log/named/dnssec.log. Lines containing ''validating'' (resolver-side checks of other people''s zones, 36 a day, all ''no valid signature found'') are excluded by the item 397 preview.'
+            summary: '{{ $labels.instance }}: DNSSEC error, failure or expiry in the last 30 minutes'
+          labels:
+            area: security
+            severity: critical
+          isPaused: false
+        - uid: bg305pv9551j4a
+          title: CybrisZoneLoadFailure
+          condition: C
+          data:
+            - refId: A
+              queryType: instant
+              relativeTimeRange:
+                from: 900
+                to: 0
+              datasourceUid: cefqyqv6j9c00e
+              model:
+                expr: sum by (instance) (count_over_time({instance=~".+\\.cybris\\.net", filename="/var/log/named/named.log"} |~ "not loaded due to errors|loading from master file .* failed" [15m]))
+                intervalMs: 1000
+                maxDataPoints: 43200
+                queryType: instant
+                refId: A
+            - refId: B
+              datasourceUid: __expr__
+              model:
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                reducer: last
+                refId: B
+                settings:
+                    mode: dropNN
+                type: reduce
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                expression: B
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          annotations:
+            description: 'Rule designed in backlog item 193, built in item 397. Source: /var/log/named/named.log.'
+            summary: '{{ $labels.instance }}: a DNS zone failed to load in the last 15 minutes'
+          labels:
+            area: security
+            severity: critical
+          isPaused: false
+        - uid: cg305q2a4cu80f
+          title: CybrisDNSRateLimiting
+          condition: C
+          data:
+            - refId: A
+              queryType: instant
+              relativeTimeRange:
+                from: 900
+                to: 0
+              datasourceUid: cefqyqv6j9c00e
+              model:
+                expr: sum by (instance) (count_over_time({instance=~".+\\.cybris\\.net", filename="/var/log/named/rate_limiting.log"} |~ "(?i)limit .*responses" [15m]))
+                intervalMs: 1000
+                maxDataPoints: 43200
+                queryType: instant
+                refId: A
+            - refId: B
+              datasourceUid: __expr__
+              model:
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                reducer: last
+                refId: B
+                settings:
+                    mode: dropNN
+                type: reduce
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 500
+                        type: gt
+                expression: B
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          annotations:
+            description: 'Rule designed in backlog item 193, built in item 397. Source: /var/log/named/rate_limiting.log. Response rate limiting is configured in log-only mode on persephone (lines read ''would limit ...'').'
+            summary: '{{ $labels.instance }}: more than 500 DNS responses rate-limited (or would be, in log-only mode) in 15 minutes'
+          labels:
+            area: security
+            severity: warning
+          isPaused: false
+        - uid: bg305q9ko6mm8f
+          title: CybrisWeb5xxSpike
+          condition: C
+          data:
+            - refId: A
+              queryType: instant
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: cefqyqv6j9c00e
+              model:
+                expr: sum by (instance) (count_over_time({instance=~".+\\.cybris\\.net", filename="/var/log/httpd/access.log"} | pattern `<client> <_> <_> [<_>] "<method> <path> <_>" <status> <_> "<_>" "<_>"` | status=~"5.." [10m]))
+                intervalMs: 1000
+                maxDataPoints: 43200
+                queryType: instant
+                refId: A
+            - refId: B
+              datasourceUid: __expr__
+              model:
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                reducer: last
+                refId: B
+                settings:
+                    mode: dropNN
+                type: reduce
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 20
+                        type: gt
+                expression: B
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          annotations:
+            description: 'Rule designed in backlog item 193, built in item 397. Source: /var/log/httpd/access.log.'
+            summary: '{{ $labels.instance }}: more than 20 Apache 5xx responses in 10 minutes'
+          labels:
+            area: security
+            severity: warning
+          isPaused: false
+        - uid: dg305qiy9yl1cb
+          title: CybrisSensitivePathServed
+          condition: C
+          data:
+            - refId: A
+              queryType: instant
+              relativeTimeRange:
+                from: 900
+                to: 0
+              datasourceUid: cefqyqv6j9c00e
+              model:
+                expr: sum by (instance, client, path) (count_over_time({instance=~".+\\.cybris\\.net", filename="/var/log/httpd/access.log"} | pattern `<client> <_> <_> [<_>] "<method> <path> <_>" <status> <_> "<_>" "<_>"` | status=~"2.." | path=~"(?i)[^?]*(/\\.env|/\\.git/|/server-status|/server-info|phpinfo|\\.htpasswd|wp-config\\.php|\\.sql|\\.bak)([?].*)?" [15m]))
+                intervalMs: 1000
+                maxDataPoints: 43200
+                queryType: instant
+                refId: A
+            - refId: B
+              datasourceUid: __expr__
+              model:
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                reducer: last
+                refId: B
+                settings:
+                    mode: dropNN
+                type: reduce
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                expression: B
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          annotations:
+            description: 'Rule designed in backlog item 193, built in item 397. Source: /var/log/httpd/access.log. The path match stops at the query string: scanner requests such as /?file=../.env return the 1,253-byte home page with 200, and the item 397 preview showed the designed pattern would have fired on them.'
+            summary: '{{ $labels.instance }}: a sensitive path was served (2xx) to {{ $labels.client }}: {{ $labels.path }}'
+          labels:
+            area: security
+            severity: critical
+          isPaused: false
+        - uid: fg305qpxxqb5se
+          title: CybrisWebAuthBruteForce
+          condition: C
+          data:
+            - refId: A
+              queryType: instant
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: cefqyqv6j9c00e
+              model:
+                expr: sum by (instance, client) (count_over_time({instance=~".+\\.cybris\\.net", filename="/var/log/httpd/access.log"} | pattern `<client> <_> <_> [<_>] "<method> <path> <_>" <status> <_> "<_>" "<_>"` | status="401" [10m]))
+                intervalMs: 1000
+                maxDataPoints: 43200
+                queryType: instant
+                refId: A
+            - refId: B
+              datasourceUid: __expr__
+              model:
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                reducer: last
+                refId: B
+                settings:
+                    mode: dropNN
+                type: reduce
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 30
+                        type: gt
+                expression: B
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          annotations:
+            description: 'Rule designed in backlog item 193, built in item 397. Source: /var/log/httpd/access.log.'
+            summary: '{{ $labels.instance }}: more than 30 HTTP 401 responses to {{ $labels.client }} in 10 minutes'
+          labels:
+            area: security
+            severity: warning
+          isPaused: false
+        - uid: cg305qwe8scu8c
+          title: CybrisApacheChildCrash
+          condition: C
+          data:
+            - refId: A
+              queryType: instant
+              relativeTimeRange:
+                from: 900
+                to: 0
+              datasourceUid: cefqyqv6j9c00e
+              model:
+                expr: sum by (instance) (count_over_time({instance=~".+\\.cybris\\.net", filename="/var/log/httpd/error.log"} |~ "exit signal (Segmentation fault|Bus error|Abort)|AH00052" [15m]))
+                intervalMs: 1000
+                maxDataPoints: 43200
+                queryType: instant
+                refId: A
+            - refId: B
+              datasourceUid: __expr__
+              model:
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                reducer: last
+                refId: B
+                settings:
+                    mode: dropNN
+                type: reduce
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                expression: B
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          annotations:
+            description: 'Rule designed in backlog item 193, built in item 397. Source: /var/log/httpd/error.log.'
+            summary: '{{ $labels.instance }}: an Apache child process crashed in the last 15 minutes'
+          labels:
+            area: security
+            severity: warning
+          isPaused: false
+        - uid: eg305r499a77ke
+          title: CybrisSSHAuthFailure
+          condition: C
+          data:
+            - refId: A
+              queryType: instant
+              relativeTimeRange:
+                from: 900
+                to: 0
+              datasourceUid: cefqyqv6j9c00e
+              model:
+                expr: 'sum by (instance) (count_over_time({instance=~".+\\.cybris\\.net", filename="/var/log/all.log"} |~ "sshd(-session)?\\[[0-9]+\\]: (Failed (password|publickey)|Invalid user|error: maximum authentication attempts)" [15m]))'
+                intervalMs: 1000
+                maxDataPoints: 43200
+                queryType: instant
+                refId: A
+            - refId: B
+              datasourceUid: __expr__
+              model:
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                reducer: last
+                refId: B
+                settings:
+                    mode: dropNN
+                type: reduce
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                expression: B
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          annotations:
+            description: 'Rule designed in backlog item 193, built in item 397. Source: /var/log/all.log. The process name is sshd-session on FreeBSD 15, so the match is sshd(-session)?; the designed ''sshd'' form could never have matched.'
+            summary: '{{ $labels.instance }}: SSH authentication failure in the last 15 minutes'
+          labels:
+            area: security
+            severity: warning
+          isPaused: false
+        - uid: dg305r9y5yccga
+          title: CybrisSudoFailure
+          condition: C
+          data:
+            - refId: A
+              queryType: instant
+              relativeTimeRange:
+                from: 900
+                to: 0
+              datasourceUid: cefqyqv6j9c00e
+              model:
+                expr: 'sum by (instance) (count_over_time({instance=~".+\\.cybris\\.net", filename="/var/log/all.log"} |~ "sudo\\[[0-9]+\\]: .*(incorrect password attempt|NOT in sudoers|authentication failure)" [15m]))'
+                intervalMs: 1000
+                maxDataPoints: 43200
+                queryType: instant
+                refId: A
+            - refId: B
+              datasourceUid: __expr__
+              model:
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                reducer: last
+                refId: B
+                settings:
+                    mode: dropNN
+                type: reduce
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                expression: B
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          annotations:
+            description: 'Rule designed in backlog item 193, built in item 397. Source: /var/log/all.log.'
+            summary: '{{ $labels.instance }}: sudo authentication failure in the last 15 minutes'
+          labels:
+            area: security
+            severity: warning
+          isPaused: false
