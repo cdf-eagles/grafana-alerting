@@ -3651,6 +3651,55 @@ groups:
           isPaused: false
           notification_settings:
             receiver: NTFY
+        - uid: fg2xv585ps740e
+          title: FedoraImagePullFailed
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: cei7lwvco16o0b
+              model:
+                editorMode: code
+                expr: fedora_image_pull_exit_code
+                instant: true
+                intervalMs: 1000
+                legendFormat: __auto
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - C
+                      reducer:
+                        type: last
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          for: 5m
+          annotations:
+            description: 'fedora-image-pull.sh exited 1 on its last run on {{ $labels.instance }}, so no new Fedora cloud image was installed; the last verified image is still in /vm/.img. Cron runs Sundays at 05:45, so a failure stays firing until the next good run. On the host: sudo grep fedora-image-pull /var/log/all.log | tail -20 (the failing step is the last line); sudo ls -l /vm/.img /vm/.tmp /var/db/fedora-image-pull. Common causes: size or SHA-256 mismatch against releases.json, a backing or external data file in the qcow2, less than 15 GiB free in /vm, fedoraproject.org unreachable. After the cause is fixed: sudo /usr/local/bin/fedora-image-pull.sh (add -n first for a dry run).'
+            summary: Weekly Fedora image pull failed on {{ $labels.instance }}
+          labels:
+            severity: warning
+          isPaused: false
+          notification_settings:
+            receiver: NTFY
         - uid: deoh3et5hsbuof
           title: MemoryOverThreshhold-Linux-Critical
           condition: C
