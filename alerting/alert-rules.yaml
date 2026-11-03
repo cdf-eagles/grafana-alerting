@@ -414,7 +414,7 @@ groups:
           execErrState: Error
           for: 1h
           annotations:
-            description: Silo's data scanner has not refreshed its data-usage cache for more than 24h (minio_bucket_usage_last_activity_nano_seconds{job="silo_bucket"}). The scanner drives the bucket counts and sizes and applies the 30-day expiry on camera01 and camera02, so a stalled scanner stops all three. Restarts of gs-silo (the :latest auto-update) can lengthen a cycle. The 24h threshold is provisional until a day of data shows the normal cycle length (item 457).
+            description: 'Silo''s data scanner has not refreshed its data-usage cache for more than 24h (minio_bucket_usage_last_activity_nano_seconds{job="silo_bucket"}). The scanner drives the bucket counts and sizes and applies the 30-day expiry on camera01 and camera02, so a stalled scanner stops all three. Measured 2026-11-01 to 2026-11-03: a refresh every 6.5 to 8.5h, never older than 8.4h; a gs-silo restart (the weekly podman01 reboot or a :latest auto-update) can add up to one cycle. Check gs-silo''s journal and mc admin info on podman01 (item 457).'
             summary: Silo's usage data is {{ printf "%.1f" $values.A.Value }} hours old
           labels:
             severity: warning
@@ -431,7 +431,7 @@ groups:
                 to: 0
               datasourceUid: cei7lwvco16o0b
               model:
-                expr: time() - max by (bucket) (silo_bucket_newest_object_timestamp_seconds{job="node", bucket="camera02"})
+                expr: time() - max by (bucket) (silo_bucket_newest_object_timestamp_seconds{job="node", bucket=~"camera0[12]"})
                 instant: true
                 intervalMs: 1000
                 maxDataPoints: 43200
@@ -454,7 +454,7 @@ groups:
           execErrState: Error
           for: 1h
           annotations:
-            description: 'The newest object in Silo''s {{ $labels.bucket }} bucket is more than 14 days old, from silo-bucket-metrics.timer''s listing on podman01 (silo_bucket_newest_object_timestamp_seconds). No data means the bucket is empty or the listing failed: check silo_bucket_listing_success and journalctl -u silo-bucket-metrics.service on podman01. Complements CameraUploadSilence, which watches the camera''s FTP connections in the gateway log. Item 457.'
+            description: 'The newest object in Silo''s {{ $labels.bucket }} bucket is more than 14 days old, from silo-bucket-metrics.timer''s listing on podman01 (silo_bucket_newest_object_timestamp_seconds). No data means a bucket is empty or the listing failed: check silo_bucket_listing_success and journalctl -u silo-bucket-metrics.service on podman01. Covers camera01 and camera02 (camera01 since 2026-11-03, once it uploaded). Complements CameraUploadSilence, which watches the camera''s FTP connections in the gateway log. Item 457.'
             summary: No new clip in {{ $labels.bucket }} for {{ humanizeDuration $values.A.Value }}
           labels:
             severity: warning
