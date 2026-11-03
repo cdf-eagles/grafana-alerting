@@ -149,6 +149,128 @@ groups:
           isPaused: false
           notification_settings:
             receiver: NTFY
+        - uid: eg12cks5l51j4e
+          title: ScrapeTargetDown
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: cei7lwvco16o0b
+              model:
+                editorMode: code
+                expr: sum by (job) (1 - up{instance!~"quicksilver\\.sleem\\.net|100\\.122\\.155\\.121|(imgtest|fedtest)[.]sleem[.]net", job!="tailscaled"})
+                instant: true
+                intervalMs: 1000
+                legendFormat: __auto
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: B
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: cei7lwvco16o0b
+              model:
+                datasource:
+                    type: prometheus
+                    uid: cei7lwvco16o0b
+                editorMode: code
+                expr: count by (job) (up{instance!~"quicksilver\\.sleem\\.net|100\\.122\\.155\\.121|(imgtest|fedtest)[.]sleem[.]net", job!="tailscaled"})
+                hide: false
+                instant: true
+                intervalMs: 1000
+                legendFormat: __auto
+                maxDataPoints: 43200
+                range: false
+                refId: B
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - C
+                      reducer:
+                        type: last
+                datasource:
+                    type: __expr__
+                    uid: __expr__
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: Alerting
+          execErrState: Error
+          for: 30m
+          annotations:
+            description: 'up has been 0 for 30m on {{ printf "%.0f" $values.A.Value }} of {{ printf "%.0f" $values.B.Value }} targets in job {{ $labels.job }}: the exporter is stopped, rejected its configuration, or is unreachable. Find which targets in Explore (mimir): up{job="{{ $labels.job }}"} == 0. Then read the exporter''s log on its host (journalctl on the podman hosts, /var/log/all.log on FreeBSD). quicksilver and the bootstrap rehearsal''s scratch guests imgtest and fedtest (item 483) are excluded; the tailscaled job is covered by TailscaledTargetDown.'
+            summary: '{{ printf "%.0f" $values.A.Value }} of {{ printf "%.0f" $values.B.Value }} {{ $labels.job }} targets are down'
+          labels:
+            severity: warning
+          isPaused: false
+          notification_settings:
+            receiver: NTFY
+        - uid: bg12cqqanrqwwd
+          title: ScrapeTargetVanished
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: cei7lwvco16o0b
+              model:
+                editorMode: code
+                expr: group by (job, instance) (max_over_time(up{instance!~"quicksilver\\.sleem\\.net|100\\.122\\.155\\.121|(imgtest|fedtest)[.]sleem[.]net"}[1d])) unless group by (job, instance) (up)
+                instant: true
+                intervalMs: 1000
+                legendFormat: __auto
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - C
+                      reducer:
+                        type: last
+                datasource:
+                    type: __expr__
+                    uid: __expr__
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          for: 15m
+          annotations:
+            description: 'Up for job {{ $labels.job }}, instance {{ $labels.instance }} was in Mimir within the last day and has been absent for 15m: the scrape config lost the target, the Alloy or Prometheus that scrapes it stopped writing, or Mimir is rejecting its samples. Query the same series on the prometheus datasource to tell a scrape fault from a remote-write fault. If the target was removed on purpose, silence this instance for 24h. The alert clears by itself one day after the series disappeared, which does not mean it recovered. quicksilver and the bootstrap rehearsal''s scratch guests imgtest and fedtest (item 483), which exist only during a rehearsal, are excluded.'
+            summary: '{{ $labels.job }} on {{ $labels.instance }} stopped reporting to Mimir'
+          labels:
+            severity: warning
+          isPaused: false
+          notification_settings:
+            receiver: NTFY
         - uid: cg2j3wgq26vpce
           title: BlackboxProbeFailed
           condition: C
@@ -1045,134 +1167,6 @@ groups:
             summary: LAN path to {{ $labels.job }} is down
           labels:
             severity: critical
-          isPaused: false
-          notification_settings:
-            receiver: NTFY
-        - uid: eg12cks5l51j4e
-          title: ScrapeTargetDown
-          condition: C
-          data:
-            - refId: A
-              relativeTimeRange:
-                from: 600
-                to: 0
-              datasourceUid: cei7lwvco16o0b
-              model:
-                editorMode: code
-                expr: sum by (job) (1 - up{instance!~"quicksilver\\.sleem\\.net|100\\.122\\.155\\.121", job!="tailscaled"})
-                instant: true
-                intervalMs: 1000
-                legendFormat: __auto
-                maxDataPoints: 43200
-                range: false
-                refId: A
-            - refId: B
-              relativeTimeRange:
-                from: 600
-                to: 0
-              datasourceUid: cei7lwvco16o0b
-              model:
-                datasource:
-                    type: prometheus
-                    uid: cei7lwvco16o0b
-                editorMode: code
-                expr: count by (job) (up{instance!~"quicksilver\\.sleem\\.net|100\\.122\\.155\\.121", job!="tailscaled"})
-                hide: false
-                instant: true
-                intervalMs: 1000
-                legendFormat: __auto
-                maxDataPoints: 43200
-                range: false
-                refId: B
-            - refId: C
-              queryType: expression
-              datasourceUid: __expr__
-              model:
-                conditions:
-                    - evaluator:
-                        params:
-                            - 0
-                        type: gt
-                      operator:
-                        type: and
-                      query:
-                        params:
-                            - C
-                      reducer:
-                        params: []
-                        type: last
-                      type: query
-                datasource:
-                    type: __expr__
-                    uid: __expr__
-                expression: A
-                intervalMs: 1000
-                maxDataPoints: 43200
-                refId: C
-                type: threshold
-          noDataState: Alerting
-          execErrState: Error
-          for: 30m
-          annotations:
-            description: 'up has been 0 for 30m on {{ printf "%.0f" $values.A.Value }} of {{ printf "%.0f" $values.B.Value }} targets in job {{ $labels.job }}: the exporter is stopped, rejected its configuration, or is unreachable. Find which targets in Explore (mimir): up{job="{{ $labels.job }}"} == 0. Then read the exporter''s log on its host (journalctl on the podman hosts, /var/log/all.log on FreeBSD). quicksilver is excluded; the tailscaled job is covered by TailscaledTargetDown.'
-            summary: '{{ printf "%.0f" $values.A.Value }} of {{ printf "%.0f" $values.B.Value }} {{ $labels.job }} targets are down'
-          labels:
-            severity: warning
-          isPaused: false
-          notification_settings:
-            receiver: NTFY
-        - uid: bg12cqqanrqwwd
-          title: ScrapeTargetVanished
-          condition: C
-          data:
-            - refId: A
-              relativeTimeRange:
-                from: 600
-                to: 0
-              datasourceUid: cei7lwvco16o0b
-              model:
-                editorMode: code
-                expr: group by (job, instance) (max_over_time(up{instance!~"quicksilver\\.sleem\\.net|100\\.122\\.155\\.121"}[1d])) unless group by (job, instance) (up)
-                instant: true
-                intervalMs: 1000
-                legendFormat: __auto
-                maxDataPoints: 43200
-                range: false
-                refId: A
-            - refId: C
-              queryType: expression
-              datasourceUid: __expr__
-              model:
-                conditions:
-                    - evaluator:
-                        params:
-                            - 0
-                        type: gt
-                      operator:
-                        type: and
-                      query:
-                        params:
-                            - C
-                      reducer:
-                        params: []
-                        type: last
-                      type: query
-                datasource:
-                    type: __expr__
-                    uid: __expr__
-                expression: A
-                intervalMs: 1000
-                maxDataPoints: 43200
-                refId: C
-                type: threshold
-          noDataState: OK
-          execErrState: Error
-          for: 15m
-          annotations:
-            description: 'Up for job {{ $labels.job }}, instance {{ $labels.instance }} was in Mimir within the last day and has been absent for 15m: the scrape config lost the target, the Alloy or Prometheus that scrapes it stopped writing, or Mimir is rejecting its samples. Query the same series on the prometheus datasource to tell a scrape fault from a remote-write fault. If the target was removed on purpose, silence this instance for 24h. The alert clears by itself one day after the series disappeared, which does not mean it recovered.'
-            summary: '{{ $labels.job }} on {{ $labels.instance }} stopped reporting to Mimir'
-          labels:
-            severity: warning
           isPaused: false
           notification_settings:
             receiver: NTFY
@@ -2440,7 +2434,7 @@ groups:
               datasourceUid: cefqyqv6j9c00e
               model:
                 editorMode: code
-                expr: (sum by (instance) (count_over_time({instance=~".+", instance!="quicksilver.sleem.net"}[6h])) > 0) unless (sum by (instance) (count_over_time({instance=~".+", instance!="quicksilver.sleem.net"}[1h])) > 0)
+                expr: (sum by (instance) (count_over_time({instance=~".+", instance!~"(quicksilver|imgtest|fedtest)[.]sleem[.]net"}[6h])) > 0) unless (sum by (instance) (count_over_time({instance=~".+", instance!~"(quicksilver|imgtest|fedtest)[.]sleem[.]net"}[1h])) > 0)
                 intervalMs: 1000
                 maxDataPoints: 43200
                 queryType: instant
@@ -2469,7 +2463,7 @@ groups:
           execErrState: Error
           for: 10m
           annotations:
-            description: 'Loki holds lines from {{ $labels.instance }} within the last 6 hours but none in the last hour. The host is up (or ScrapeTargetDown would say otherwise), so its Alloy stopped shipping: the FreeBSD file tail lost the logread group, the journal source on a podman host stopped, or Loki rejected the push. quicksilver is excluded. On the host: sudo service alloy status / sudo systemctl status alloy; then Alloy''s own log for loki.write errors; then a deliberate logger test line and query it in Explore (loki). Clears when lines resume.'
+            description: 'Loki holds lines from {{ $labels.instance }} within the last 6 hours but none in the last hour. The host is up (or ScrapeTargetDown would say otherwise), so its Alloy stopped shipping: the FreeBSD file tail lost the logread group, the journal source on a podman host stopped, or Loki rejected the push. quicksilver and the bootstrap rehearsal''s scratch guests imgtest and fedtest (item 483) are excluded. On the host: sudo service alloy status / sudo systemctl status alloy; then Alloy''s own log for loki.write errors; then a deliberate logger test line and query it in Explore (loki). Clears when lines resume.'
             summary: '{{ $labels.instance }} has sent no logs to Loki for over an hour'
           labels:
             severity: warning
@@ -2695,7 +2689,7 @@ groups:
               datasourceUid: cei7lwvco16o0b
               model:
                 editorMode: code
-                expr: (time() - max by (instance) (pkg_audit_last_run_timestamp_seconds)) > 93600 or (time() - max by (instance) (pkg_audit_db_timestamp_seconds)) > 259200 or on (instance) (count by (instance) (node_uname_info{job="node", sysname="FreeBSD"}) unless on (instance) pkg_audit_last_run_timestamp_seconds)
+                expr: (time() - max by (instance) (pkg_audit_last_run_timestamp_seconds)) > 93600 or (time() - max by (instance) (pkg_audit_db_timestamp_seconds)) > 259200 or on (instance) (count by (instance) (node_uname_info{job="node", sysname="FreeBSD", instance!~"(imgtest|fedtest)[.]sleem[.]net"}) unless on (instance) pkg_audit_last_run_timestamp_seconds)
                 instant: true
                 intervalMs: 1000
                 maxDataPoints: 43200
@@ -2725,7 +2719,7 @@ groups:
           execErrState: Error
           for: 15m
           annotations:
-            description: 'No scheduled pkg audit in 26h, a vulnerability database older than 3 days (pkg audit -F failing), or no pkg_audit metric. Check: sudo grep pkg-audit /var/log/all.log | tail, and /var/tmp/node_exporter/pkg_audit.prom.'
+            description: 'No scheduled pkg audit in 26h, a vulnerability database older than 3 days (pkg audit -F failing), or no pkg_audit metric. The bootstrap rehearsal''s scratch guests imgtest and fedtest (item 483) are excluded from the no-metric case: they live under an hour. Check: sudo grep pkg-audit /var/log/all.log | tail, and /var/tmp/node_exporter/pkg_audit.prom.'
             summary: pkg audit is stale on {{ $labels.instance }}
           labels:
             severity: warning
@@ -3176,6 +3170,111 @@ groups:
                 - grafana_folder
                 - alertname
                 - instance
+        - uid: bfzodzab3buv4b
+          title: FreeBSDPkgUpdateStale
+          condition: B
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: cei7lwvco16o0b
+              model:
+                editorMode: code
+                expr: (time() - max by (instance) (pkg_update_last_run_timestamp_seconds)) > 93600 or on (instance) (count by (instance) (node_uname_info{job="node", sysname="FreeBSD", instance!~"(imgtest|fedtest)[.]sleem[.]net"}) unless on (instance) pkg_update_last_run_timestamp_seconds)
+                instant: true
+                intervalMs: 1000
+                legendFormat: __auto
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: B
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                            - 0
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params: []
+                      reducer:
+                        type: avg
+                datasource:
+                    type: __expr__
+                    uid: __expr__
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: B
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          for: 15m
+          annotations:
+            description: 'No scheduled pkg update in 26h, or no pkg_update metric. The bootstrap rehearsal''s scratch guests imgtest and fedtest (item 483) are excluded from the no-metric case: they live under an hour. Check root''s crontab and /var/tmp/node_exporter/pkg_update.prom.'
+            summary: pkg update has not run on {{ $labels.instance }}
+          labels:
+            severity: warning
+          isPaused: false
+          notification_settings:
+            receiver: NTFY
+        - uid: cfzs62d9vegw0a
+          title: DnfOfflineStale
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: cei7lwvco16o0b
+              model:
+                editorMode: code
+                expr: (time() - max by (instance) (dnf_offline_stage_last_trigger_timestamp_seconds)) > 691200 or on (instance) (time() - max by (instance) (dnf_offline_metrics_last_run_timestamp_seconds)) > 1800 or on (instance) (count by (instance) (node_uname_info{job="node", sysname="Linux", instance!~"(imgtest|fedtest)[.]sleem[.]net"}) unless on (instance) dnf_offline_metrics_last_run_timestamp_seconds)
+                instant: true
+                intervalMs: 1000
+                legendFormat: __auto
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: C
+              queryType: expression
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - C
+                      reducer:
+                        type: last
+                datasource:
+                    type: __expr__
+                    uid: __expr__
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          for: 1m
+          annotations:
+            description: 'One of three causes on {{ $labels.instance }}: dnf-offline-stage.timer has not fired in 8 days (nothing is being staged); dnf_offline.prom has not been rewritten in 30 minutes (dnf-offline-metrics.timer or its script stopped); or the host reports no dnf_offline metrics at all (script never ran, or node_exporter runs without --collector.textfile.directory). The bootstrap rehearsal''s scratch guest fedtest (item 483) is excluded from the last case. On the host: sudo systemctl list-timers ''dnf-offline-*''; sudo systemctl status dnf-offline-metrics.service; ls -l /var/lib/node_exporter/textfile/.'
+            summary: dnf offline update staging or its metrics are stale on {{ $labels.instance }}
+          labels:
+            severity: warning
+          isPaused: false
+          notification_settings:
+            receiver: NTFY
         - uid: cg0mdpp7as8hsd
           title: OsEol70d
           condition: C
@@ -3368,6 +3467,59 @@ groups:
           isPaused: false
           notification_settings:
             receiver: NTFY
+        - uid: ag18vra98ia68b
+          title: NtpdMetricsStale
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: cei7lwvco16o0b
+              model:
+                editorMode: code
+                expr: (time() - max by (instance) (ntpd_metrics_last_run_timestamp_seconds)) > 600 or on (instance) (count by (instance) (node_uname_info{job="node", sysname="FreeBSD", instance!~"(imgtest|fedtest)[.]sleem[.]net"}) unless on (instance) ntpd_metrics_last_run_timestamp_seconds)
+                instant: true
+                intervalMs: 1000
+                legendFormat: __auto
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: C
+              queryType: expression
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - C
+                      reducer:
+                        type: last
+                datasource:
+                    type: __expr__
+                    uid: __expr__
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          for: 5m
+          annotations:
+            description: /var/tmp/node_exporter/ntpd.prom not refreshed in 10 minutes, or missing. The bootstrap rehearsal's scratch guests imgtest and fedtest (item 483) are excluded from the missing case. Check /usr/local/etc/cron.d/ntp-offset-metrics and run sudo -u node_exporter /usr/local/sbin/ntp-offset-metrics.sh
+            summary: ntpd metrics stale on {{ $labels.instance }}
+          labels:
+            severity: warning
+          isPaused: false
+          notification_settings:
+            receiver: NTFY
         - uid: ag2j405m3q0hsf
           title: HostRebooted
           condition: C
@@ -3379,7 +3531,7 @@ groups:
               datasourceUid: cei7lwvco16o0b
               model:
                 editorMode: code
-                expr: (node_time_seconds{job="node", instance!="quicksilver.sleem.net"} - node_boot_time_seconds{job="node", instance!="quicksilver.sleem.net"}) < 900
+                expr: (node_time_seconds{job="node", instance!~"(quicksilver|imgtest|fedtest)[.]sleem[.]net"} - node_boot_time_seconds{job="node", instance!~"(quicksilver|imgtest|fedtest)[.]sleem[.]net"}) < 900
                 instant: true
                 intervalMs: 1000
                 maxDataPoints: 43200
@@ -3409,7 +3561,7 @@ groups:
           execErrState: Error
           for: 5m
           annotations:
-            description: 'node_boot_time_seconds moved: {{ $labels.instance }} has been up for under 15 minutes (planned reboot, crash, or power loss). The 5m pending period means it fires about 5 minutes after boot, once. The Wednesday podman reboot slot (06:55-08:00 UTC) is muted by the podman-reboot-window mute timing; a soundwave patch window needs a silence. quicksilver is excluded (laptop). Check: uptime; last reboot; on FreeBSD /var/log/all.log around the boot, on Linux journalctl -b -1 -p err.'
+            description: 'node_boot_time_seconds moved: {{ $labels.instance }} has been up for under 15 minutes (planned reboot, crash, or power loss). The 5m pending period means it fires about 5 minutes after boot, once. The Wednesday podman reboot slot (06:55-08:00 UTC) is muted by the podman-reboot-window mute timing; a soundwave patch window needs a silence. quicksilver (laptop) and the bootstrap rehearsal''s scratch guests imgtest and fedtest (item 483) are excluded. Check: uptime; last reboot; on FreeBSD /var/log/all.log around the boot, on Linux journalctl -b -1 -p err.'
             summary: '{{ $labels.instance }} rebooted (uptime {{ printf "%.0f" $values.A.Value }}s)'
           labels:
             severity: warning
@@ -4123,60 +4275,6 @@ groups:
           isPaused: false
           notification_settings:
             receiver: NTFY
-        - uid: bfzodzab3buv4b
-          title: FreeBSDPkgUpdateStale
-          condition: B
-          data:
-            - refId: A
-              relativeTimeRange:
-                from: 600
-                to: 0
-              datasourceUid: cei7lwvco16o0b
-              model:
-                editorMode: code
-                expr: (time() - max by (instance) (pkg_update_last_run_timestamp_seconds)) > 93600 or on (instance) (count by (instance) (node_uname_info{job="node", sysname="FreeBSD"}) unless on (instance) pkg_update_last_run_timestamp_seconds)
-                instant: true
-                intervalMs: 1000
-                legendFormat: __auto
-                maxDataPoints: 43200
-                range: false
-                refId: A
-            - refId: B
-              datasourceUid: __expr__
-              model:
-                conditions:
-                    - evaluator:
-                        params:
-                            - 0
-                            - 0
-                        type: gt
-                      operator:
-                        type: and
-                      query:
-                        params: []
-                      reducer:
-                        params: []
-                        type: avg
-                      type: query
-                datasource:
-                    type: __expr__
-                    uid: __expr__
-                expression: A
-                intervalMs: 1000
-                maxDataPoints: 43200
-                refId: B
-                type: threshold
-          noDataState: OK
-          execErrState: Error
-          for: 15m
-          annotations:
-            description: No scheduled pkg update in 26h, or no pkg_update metric. Check root's crontab and /var/tmp/node_exporter/pkg_update.prom.
-            summary: pkg update has not run on {{ $labels.instance }}
-          labels:
-            severity: warning
-          isPaused: false
-          notification_settings:
-            receiver: NTFY
         - uid: efzs4vlnkg5j4e
           title: DnfOfflineTransactionProblem
           condition: C
@@ -4338,61 +4436,6 @@ groups:
             Unit Name: '{{ $labels.unit }}'
             description: 'dnf-offline-stage.service or dnf-offline-reboot.service is in the failed state on {{ $labels.instance }}. A failed stage means no update was staged; a failed reboot means the slot did not reboot the host. On the host: sudo systemctl --failed --no-pager; sudo journalctl -u dnf-offline-stage.service -u dnf-offline-reboot.service --no-pager. After the fix: sudo systemctl reset-failed dnf-offline-stage.service dnf-offline-reboot.service.'
             summary: dnf offline update unit failed on {{ $labels.instance }}
-          labels:
-            severity: warning
-          isPaused: false
-          notification_settings:
-            receiver: NTFY
-        - uid: cfzs62d9vegw0a
-          title: DnfOfflineStale
-          condition: C
-          data:
-            - refId: A
-              relativeTimeRange:
-                from: 600
-                to: 0
-              datasourceUid: cei7lwvco16o0b
-              model:
-                editorMode: code
-                expr: (time() - max by (instance) (dnf_offline_stage_last_trigger_timestamp_seconds)) > 691200 or on (instance) (time() - max by (instance) (dnf_offline_metrics_last_run_timestamp_seconds)) > 1800 or on (instance) (count by (instance) (node_uname_info{job="node", sysname="Linux"}) unless on (instance) dnf_offline_metrics_last_run_timestamp_seconds)
-                instant: true
-                intervalMs: 1000
-                legendFormat: __auto
-                maxDataPoints: 43200
-                range: false
-                refId: A
-            - refId: C
-              queryType: expression
-              datasourceUid: __expr__
-              model:
-                conditions:
-                    - evaluator:
-                        params:
-                            - 0
-                        type: gt
-                      operator:
-                        type: and
-                      query:
-                        params:
-                            - C
-                      reducer:
-                        params: []
-                        type: last
-                      type: query
-                datasource:
-                    type: __expr__
-                    uid: __expr__
-                expression: A
-                intervalMs: 1000
-                maxDataPoints: 43200
-                refId: C
-                type: threshold
-          noDataState: OK
-          execErrState: Error
-          for: 1m
-          annotations:
-            description: 'One of three causes on {{ $labels.instance }}: dnf-offline-stage.timer has not fired in 8 days (nothing is being staged); dnf_offline.prom has not been rewritten in 30 minutes (dnf-offline-metrics.timer or its script stopped); or the host reports no dnf_offline metrics at all (script never ran, or node_exporter runs without --collector.textfile.directory). On the host: sudo systemctl list-timers ''dnf-offline-*''; sudo systemctl status dnf-offline-metrics.service; ls -l /var/lib/node_exporter/textfile/.'
-            summary: dnf offline update staging or its metrics are stale on {{ $labels.instance }}
           labels:
             severity: warning
           isPaused: false
@@ -4777,61 +4820,6 @@ groups:
           annotations:
             description: 'ntpd offset above 100 ms for 15 minutes. Check: ntpq -pn 127.0.0.1 on the host and on ntp.sleem.net'
             summary: Clock offset {{ $value }}s on {{ $labels.instance }}
-          labels:
-            severity: warning
-          isPaused: false
-          notification_settings:
-            receiver: NTFY
-        - uid: ag18vra98ia68b
-          title: NtpdMetricsStale
-          condition: C
-          data:
-            - refId: A
-              relativeTimeRange:
-                from: 600
-                to: 0
-              datasourceUid: cei7lwvco16o0b
-              model:
-                editorMode: code
-                expr: (time() - max by (instance) (ntpd_metrics_last_run_timestamp_seconds)) > 600 or on (instance) (count by (instance) (node_uname_info{job="node", sysname="FreeBSD"}) unless on (instance) ntpd_metrics_last_run_timestamp_seconds)
-                instant: true
-                intervalMs: 1000
-                legendFormat: __auto
-                maxDataPoints: 43200
-                range: false
-                refId: A
-            - refId: C
-              queryType: expression
-              datasourceUid: __expr__
-              model:
-                conditions:
-                    - evaluator:
-                        params:
-                            - 0
-                        type: gt
-                      operator:
-                        type: and
-                      query:
-                        params:
-                            - C
-                      reducer:
-                        params: []
-                        type: last
-                      type: query
-                datasource:
-                    type: __expr__
-                    uid: __expr__
-                expression: A
-                intervalMs: 1000
-                maxDataPoints: 43200
-                refId: C
-                type: threshold
-          noDataState: OK
-          execErrState: Error
-          for: 5m
-          annotations:
-            description: /var/tmp/node_exporter/ntpd.prom not refreshed in 10 minutes, or missing. Check /usr/local/etc/cron.d/ntp-offset-metrics and run sudo -u node_exporter /usr/local/sbin/ntp-offset-metrics.sh
-            summary: ntpd metrics stale on {{ $labels.instance }}
           labels:
             severity: warning
           isPaused: false
