@@ -6304,3 +6304,148 @@ groups:
             area: security
             severity: warning
           isPaused: false
+    - orgId: 2
+      name: macos-santa
+      folder: Security
+      interval: 1m
+      rules:
+        - uid: cg40f1sqdff9cb
+          title: SantaExecutionFromTempLocation
+          condition: C
+          data:
+            - refId: A
+              queryType: instant
+              relativeTimeRange:
+                from: 900
+                to: 0
+              datasourceUid: cefqyqv6j9c00e
+              model:
+                editorMode: code
+                expr: sum by (instance, path) (count_over_time({job="santa"} |= "action=EXEC" | regexp `\|path=(?P<path>[^|]*)` | path =~ `^(/private)?/tmp/.*|^/private/var/folders/.*|^/Users/[^/]+/Downloads/.*|^/Volumes/.*` [15m]))
+                intervalMs: 1000
+                maxDataPoints: 43200
+                queryType: instant
+                refId: A
+            - refId: B
+              datasourceUid: __expr__
+              model:
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                reducer: last
+                refId: B
+                settings:
+                    mode: dropNN
+                type: reduce
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                expression: B
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          annotations:
+            description: 'Santa (item 501) logged an execution from /tmp, /private/var/folders, a Downloads folder or a mounted volume in the last 15 minutes. Source: /var/db/santa/santa.log (job santa). Read the line, its parent (ppid) and its arguments in Explore (loki): {job="santa", instance="{{ $labels.instance }}"} |= "path={{ $labels.path }}". Installers under /private/var/folders and Homebrew builds under /private/tmp are expected; the soak adds exclusions for them.'
+            summary: '{{ $labels.instance }}: a program ran from a temporary or download location: {{ $labels.path }}'
+          labels:
+            area: security
+            severity: warning
+          isPaused: false
+        - uid: bg40f26fwv6rkb
+          title: SantaUnsignedExecution
+          condition: C
+          data:
+            - refId: A
+              queryType: instant
+              relativeTimeRange:
+                from: 900
+                to: 0
+              datasourceUid: cefqyqv6j9c00e
+              model:
+                editorMode: code
+                expr: sum by (instance, path) (count_over_time({job="santa"} |= "action=EXEC" !~ `\|cert_cn=` | regexp `\|path=(?P<path>[^|]*)` | path !~ `^/opt/homebrew/.*|^/Users/haides/Applications/VaultSnapshot\.app/Contents/MacOS/applet` [15m]))
+                intervalMs: 1000
+                maxDataPoints: 43200
+                queryType: instant
+                refId: A
+            - refId: B
+              datasourceUid: __expr__
+              model:
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                reducer: last
+                refId: B
+                settings:
+                    mode: dropNN
+                type: reduce
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                expression: B
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          annotations:
+            description: 'Santa (item 501) logged an execution with no signing certificate (no cert_cn field: unsigned or ad hoc signed) outside /opt/homebrew in the last 15 minutes. Apple''s own binaries always carry cert_cn, even when they have no teamid, so they never match. Excluded by exact path: shockwave''s own ad hoc signed ~/Applications/VaultSnapshot.app applet. Read the line in Explore (loki): {job="santa", instance="{{ $labels.instance }}"} |= "path={{ $labels.path }}". Self-built tools are expected here until the soak adds their paths.'
+            summary: '{{ $labels.instance }}: an unsigned or ad hoc signed program ran outside Homebrew: {{ $labels.path }}'
+          labels:
+            area: security
+            severity: warning
+          isPaused: false
+        - uid: ag40f2i0bftvkb
+          title: SantaStoppedLogging
+          condition: C
+          data:
+            - refId: A
+              queryType: instant
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: cefqyqv6j9c00e
+              model:
+                editorMode: code
+                expr: (sum by (instance) (count_over_time({job="santa", instance!="quicksilver.sleem.net"}[6h])) > 0) unless (sum by (instance) (count_over_time({job="santa", instance!="quicksilver.sleem.net"}[1h])) > 0)
+                intervalMs: 1000
+                maxDataPoints: 43200
+                queryType: instant
+                refId: A
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          for: 10m
+          annotations:
+            description: 'Loki holds Santa lines (job santa, item 501) from {{ $labels.instance }} within the last 6 hours but none in the last hour; shockwave runs programs every few seconds, so silence means Santa stopped, lost Full Disk Access, was turned off, or Alloy''s santa tail stopped. HostStoppedLogging covers Alloy as a whole. quicksilver is excluded (a laptop that sleeps). On the Mac: santactl status; systemextensionsctl list | grep -i santa; ls -l /var/db/santa/santa.log; then Alloy''s log for the loki.source.file santa component. Clears when lines resume.'
+            summary: '{{ $labels.instance }}: Santa has sent no events for over an hour'
+          labels:
+            area: security
+            severity: warning
+          isPaused: false
