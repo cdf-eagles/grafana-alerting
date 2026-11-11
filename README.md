@@ -32,6 +32,40 @@ authored by `grafana-alert-export`; nobody else should push to `main`.
 
 The files are in Grafana's file-provisioning format.
 
+## Checks
+
+CI (`.github/workflows/ci.yaml`) runs on every pull request to `main`, every
+push to `main`, and weekly. It runs, once each:
+
+- gitleaks over the full history;
+- `scripts/check-export.sh`, the invariants the writer itself enforces: the
+  four export files and no others, each starting `apiVersion: 1`, at least one
+  rule, and no ntfy token anywhere;
+- shellcheck on `scripts/`, `yamllint --strict` (`.yamllint.yaml` checks
+  mistakes, not style, so Grafana's own formatting passes);
+- the pre-commit hooks: workflow and Dependabot schemas, actionlint, and two
+  private-key and secret scanners.
+
+`CI` is a required status check on `main`. The writer's deploy key bypasses
+the ruleset, so an export is pushed even if CI would fail it, and the push run
+reports the failure afterwards; a pull request cannot merge on a red run.
+
+To run the checks locally:
+
+```sh
+python3 -m venv .venv
+.venv/bin/pip install -r ci/requirements.txt
+PATH="$PWD/.venv/bin:$PATH"
+sh scripts/check-export.sh
+shellcheck -s sh scripts/*.sh
+yamllint --strict .
+pre-commit run --all-files
+pre-commit install
+```
+
+`pre-commit install` also installs the pre-push gitleaks hook, which scans
+the commits being pushed.
+
 ## Restoring
 
 - **Everything** (lost database): restore mariadb01's backup chain; see the
