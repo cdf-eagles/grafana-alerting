@@ -1,4 +1,3 @@
-apiVersion: 1
 muteTimes:
     - orgId: 2
       name: podman-reboot-window
