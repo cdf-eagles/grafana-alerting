@@ -6371,7 +6371,7 @@ groups:
               datasourceUid: cefqyqv6j9c00e
               model:
                 editorMode: code
-                expr: sum by (instance, path) (count_over_time({job="santa"} |= "action=EXEC" !~ `\|cert_cn=` | regexp `\|path=(?P<path>[^|]*)` | path !~ `^/opt/homebrew/.*|^/Users/haides/Applications/VaultSnapshot\.app/Contents/MacOS/applet` [15m]))
+                expr: sum by (instance, path) (count_over_time({job="santa"} |= "action=EXEC" !~ `\|cert_cn=` | regexp `\|path=(?P<path>[^|]*)` | path !~ `^/opt/homebrew/.*|^/Users/haides/Applications/VaultSnapshot\.app/Contents/MacOS/applet|^/Users/haides/\.cache/pre-commit/repo[a-z0-9_]{8}/(rustenv-default|golangenv-[^/]+)/bin/(ripsecrets|gitleaks|actionlint|golangci-lint)` [15m]))
                 intervalMs: 1000
                 maxDataPoints: 43200
                 queryType: instant
@@ -6403,7 +6403,7 @@ groups:
           noDataState: OK
           execErrState: Error
           annotations:
-            description: 'Santa (item 501) logged an execution with no signing certificate (no cert_cn field: unsigned or ad hoc signed) outside /opt/homebrew in the last 15 minutes. Apple''s own binaries always carry cert_cn, even when they have no teamid, so they never match. Excluded by exact path: shockwave''s own ad hoc signed ~/Applications/VaultSnapshot.app applet. Read the line in Explore (loki): {job="santa", instance="{{ $labels.instance }}"} |= "path={{ $labels.path }}". Self-built tools are expected here until the soak adds their paths.'
+            description: 'Santa (item 501) logged an execution with no signing certificate (no cert_cn field: unsigned or ad hoc signed) outside /opt/homebrew in the last 15 minutes. Apple''s own binaries always carry cert_cn, even when they have no teamid, so they never match. Excluded by exact path: shockwave''s own ad hoc signed ~/Applications/VaultSnapshot.app applet. Excluded by pattern (2026-11-13): pre-commit''s locally built hook binaries ripsecrets, gitleaks, actionlint and golangci-lint under ~/.cache/pre-commit/repo<8 chars>/(rustenv-default|golangenv-*)/bin/, which are ad hoc linker signed and change hash and folder on every hook rev bump. Read the line in Explore (loki): {job="santa", instance="{{ $labels.instance }}"} |= "path={{ $labels.path }}". Self-built tools are expected here until the soak adds their paths.'
             summary: '{{ $labels.instance }}: an unsigned or ad hoc signed program ran outside Homebrew: {{ $labels.path }}'
           labels:
             area: security
