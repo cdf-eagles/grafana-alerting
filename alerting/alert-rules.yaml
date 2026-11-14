@@ -5303,6 +5303,63 @@ groups:
             __converted_prometheus_rule__: "true"
             severity: critical
           isPaused: false
+        - uid: fg48gukiycbnkd
+          title: ZfsPoolNeedsAttention
+          condition: threshold
+          data:
+            - refId: query
+              queryType: prometheus
+              relativeTimeRange:
+                from: 660
+                to: 60
+              datasourceUid: cei7lwvco16o0b
+              model:
+                datasource:
+                    type: prometheus
+                    uid: cei7lwvco16o0b
+                expr: zfs_pool_needs_attention{pool!="mediapool"} > 0
+                instant: true
+                intervalMs: 1000
+                maxDataPoints: 43200
+                range: false
+                refId: query
+            - refId: prometheus_math
+              queryType: math
+              datasourceUid: __expr__
+              model:
+                datasource:
+                    type: __expr__
+                    uid: __expr__
+                expression: is_number($query) || is_nan($query) || is_inf($query)
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: prometheus_math
+                type: math
+            - refId: threshold
+              queryType: threshold
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                datasource:
+                    type: __expr__
+                    uid: __expr__
+                expression: prometheus_math
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: threshold
+                type: threshold
+          noDataState: OK
+          execErrState: OK
+          for: 15m
+          annotations:
+            summary: ZFS pool {{ $labels.pool }} on {{ $labels.instance }} prints a zpool status message (needs attention); mediapool is excluded, its 512B-on-4K block size is accepted
+          labels:
+            severity: warning
+          isPaused: false
         - uid: 3d53af96-98b6-594f-bbb1-3d76a473acb5
           title: ZfsVdevErrors
           condition: threshold
