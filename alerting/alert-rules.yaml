@@ -675,6 +675,58 @@ groups:
           isPaused: false
           notification_settings:
             receiver: NTFY
+        - uid: fg48psfth8r28e
+          title: OpenBaoCopyCheckErrors
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 900
+                to: 0
+              datasourceUid: cei7lwvco16o0b
+              model:
+                editorMode: code
+                expr: last_over_time(openbao_copy_error_items{mount=~"sleem|cybris"}[15m])
+                instant: true
+                intervalMs: 1000
+                legendFormat: __auto
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - C
+                      reducer:
+                        type: last
+                datasource:
+                    type: __expr__
+                    uid: __expr__
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          for: 1d1h
+          annotations:
+            description: 'The daily drift check (openbao-copy-check.timer, 04:15 UTC) could not read items in {{ $labels.mount }}/ on two runs in a row, even after retrying: 1Password (HTTP 429, 5xx or timeout) or OpenBao (5xx) kept failing, so those copies are unchecked (backlog item 519). On podman03: sudo journalctl -u openbao-copy-check.service -n 70 --no-pager | grep -E ''^(ERROR|RETRY) ''. A single run''s error resolves at the next run and never fires this rule. No data is treated as OK: OpenBaoCopyCheckStale covers a missing metrics file.'
+            summary: '{{ $values.A.Value }} OpenBao copies could not be checked on {{ $labels.instance }}'
+          labels:
+            severity: warning
+          isPaused: false
+          notification_settings:
+            receiver: NTFY
         - uid: dfbc7300cts74c
           title: MariaDBConnectionPoolNearLimit
           condition: C
