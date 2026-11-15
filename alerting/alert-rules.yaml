@@ -6130,7 +6130,7 @@ groups:
                 to: 0
               datasourceUid: cefqyqv6j9c00e
               model:
-                expr: sum by (instance) (count_over_time({instance=~".+\\.cybris\\.net", filename="/var/log/httpd/access.log"} | pattern `<client> <_> <_> [<_>] "<method> <path> <_>" <status> <_> "<_>" "<_>"` | status=~"5.." [10m]))
+                expr: sum by (instance) (count_over_time({instance=~".+\\.cybris\\.net", filename="/var/log/httpd/access.log"} | regexp `^(?P<client>\S+) \S+ \S+ (?:"[^"]*" )?\[[^\]]*\] "(?P<method>\S+) (?P<path>\S+) [^"]*" (?P<status>\d{3}) ` | status=~"5.." [10m]))
                 intervalMs: 1000
                 maxDataPoints: 43200
                 queryType: instant
@@ -6162,7 +6162,7 @@ groups:
           noDataState: OK
           execErrState: Error
           annotations:
-            description: 'Rule designed in backlog item 193, built in item 397. Source: /var/log/httpd/access.log.'
+            description: 'Rule designed in backlog item 193, built in item 397. Source: /var/log/httpd/access.log. The regexp parser reads both Apache''s combined format and the vhost_noquery format (backlog item 530).'
             summary: '{{ $labels.instance }}: more than 20 Apache 5xx responses in 10 minutes'
           labels:
             area: security
@@ -6179,7 +6179,7 @@ groups:
                 to: 0
               datasourceUid: cefqyqv6j9c00e
               model:
-                expr: sum by (instance, client, path) (count_over_time({instance=~".+\\.cybris\\.net", filename="/var/log/httpd/access.log"} | pattern `<client> <_> <_> [<_>] "<method> <path> <_>" <status> <_> "<_>" "<_>"` | status=~"2.." | path=~"(?i)[^?]*(/\\.env|/\\.git/|/server-status|/server-info|phpinfo|\\.htpasswd|wp-config\\.php|\\.sql|\\.bak)([?].*)?" [15m]))
+                expr: sum by (instance, client, path) (count_over_time({instance=~".+\\.cybris\\.net", filename="/var/log/httpd/access.log"} | regexp `^(?P<client>\S+) \S+ \S+ (?:"[^"]*" )?\[[^\]]*\] "(?P<method>\S+) (?P<path>\S+) [^"]*" (?P<status>\d{3}) ` | status=~"2.." | path=~"(?i)[^?]*(/\\.env|/\\.git/|/server-status|/server-info|phpinfo|\\.htpasswd|wp-config\\.php|\\.sql|\\.bak)([?].*)?" [15m]))
                 intervalMs: 1000
                 maxDataPoints: 43200
                 queryType: instant
@@ -6211,7 +6211,7 @@ groups:
           noDataState: OK
           execErrState: Error
           annotations:
-            description: 'Rule designed in backlog item 193, built in item 397. Source: /var/log/httpd/access.log. The path match stops at the query string: scanner requests such as /?file=../.env return the 1,253-byte home page with 200, and the item 397 preview showed the designed pattern would have fired on them.'
+            description: 'Rule designed in backlog item 193, built in item 397. Source: /var/log/httpd/access.log. The path match stops at the query string: scanner requests such as /?file=../.env return the 1,253-byte home page with 200, and the item 397 preview showed the designed pattern would have fired on them. The regexp parser reads both Apache''s combined format and the vhost_noquery format, which logs no query string at all (backlog item 530).'
             summary: '{{ $labels.instance }}: a sensitive path was served (2xx) to {{ $labels.client }}: {{ $labels.path }}'
           labels:
             area: security
@@ -6228,7 +6228,7 @@ groups:
                 to: 0
               datasourceUid: cefqyqv6j9c00e
               model:
-                expr: sum by (instance, client) (count_over_time({instance=~".+\\.cybris\\.net", filename="/var/log/httpd/access.log"} | pattern `<client> <_> <_> [<_>] "<method> <path> <_>" <status> <_> "<_>" "<_>"` | status="401" [10m]))
+                expr: sum by (instance, client) (count_over_time({instance=~".+\\.cybris\\.net", filename="/var/log/httpd/access.log"} | regexp `^(?P<client>\S+) \S+ \S+ (?:"[^"]*" )?\[[^\]]*\] "(?P<method>\S+) (?P<path>\S+) [^"]*" (?P<status>\d{3}) ` | status="401" [10m]))
                 intervalMs: 1000
                 maxDataPoints: 43200
                 queryType: instant
@@ -6260,7 +6260,7 @@ groups:
           noDataState: OK
           execErrState: Error
           annotations:
-            description: 'Rule designed in backlog item 193, built in item 397. Source: /var/log/httpd/access.log.'
+            description: 'Rule designed in backlog item 193, built in item 397. Source: /var/log/httpd/access.log. The regexp parser reads both Apache''s combined format and the vhost_noquery format (backlog item 530).'
             summary: '{{ $labels.instance }}: more than 30 HTTP 401 responses to {{ $labels.client }} in 10 minutes'
           labels:
             area: security
