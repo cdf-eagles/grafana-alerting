@@ -508,7 +508,7 @@ groups:
           execErrState: Error
           for: 5m
           annotations:
-            description: 'authentik_outposts_connected has been 0 for 5 minutes for {{ $labels.outpost }} (expected {{ $labels.expected }}): the proxy outpost that fronts Uptime Kuma (and whatever else it serves) has lost its websocket to the Authentik server, so sign-ins through it fail or hang while the app behind it stays up. On podman03: sudo podman ps --filter name=authentik; sudo journalctl -u authentik-proxy-outpost.service -n 50 --no-pager (or the outpost''s unit name); the outpost page in Authentik shows last seen. A restart of the outpost container reconnects it.'
+            description: 'authentik_outposts_connected has been 0 for 5 minutes for {{ $labels.outpost }} (expected {{ $labels.expected }}): that outpost has lost its websocket to the Authentik server, so sign-ins through it fail or hang while the applications behind it stay up. The proxy outpost on podman01 serves Uptime Kuma, Sonarr, Radarr and Prowlarr: on podman01, sudo systemctl status authentik-proxy-podman01 and sudo journalctl -u authentik-proxy-podman01 -n 50 --no-pager; sudo systemctl restart authentik-proxy-podman01 reconnects it. authentik Embedded Outpost runs inside the Authentik server on podman03 (unit authentik-podman03). The outpost''s page in Authentik shows when it was last seen.'
             summary: Authentik outpost {{ $labels.outpost }} is disconnected
           labels:
             severity: warning
