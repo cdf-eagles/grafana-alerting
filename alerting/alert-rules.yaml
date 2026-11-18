@@ -4110,6 +4110,124 @@ groups:
           isPaused: false
           notification_settings:
             receiver: NTFY
+        - uid: ag4p1yan86qkga
+          title: FreeBSDEtcIntegrityChange
+          condition: C
+          data:
+            - refId: A
+              queryType: instant
+              relativeTimeRange:
+                from: 1200
+                to: 0
+              datasourceUid: cefqyqv6j9c00e
+              model:
+                datasource:
+                    type: loki
+                    uid: cefqyqv6j9c00e
+                editorMode: code
+                expr: 'sum by (instance) (count_over_time({filename="/var/log/all.log"} |~ "etc_integrity\\[[0-9]+\\]: (event=error|event=(change|truncated) mode=check)" [20m]))'
+                instant: true
+                intervalMs: 1000
+                maxDataPoints: 43200
+                queryType: instant
+                refId: A
+            - refId: C
+              queryType: expression
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - C
+                      reducer:
+                        type: last
+                datasource:
+                    type: __expr__
+                    uid: __expr__
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          annotations:
+            description: '{{ printf "%.0f" $values.A.Value }} etc_integrity line(s) in 20 minutes report a difference from the mtree baseline that no Ansible run, patching window, or certificate renewal accepted, or an error that stopped the check (missing baseline or exclude file, mtree failure). The 15-minute check keeps reporting a difference until it is accepted, so this keeps firing until then. Read the lines in Explore (loki): {instance="{{ $labels.instance }}", filename="/var/log/all.log"} |= "etc_integrity[" |~ "event=(change|error|truncated)". If the change is legitimate (a hand edit or pkg upgrade outside a window), record it: sudo /usr/local/libexec/etc_integrity accept manual. If it is not, treat the host as compromised; the baseline is /var/db/etc_integrity, root-only. A path that changes on its own goes in the exclusions (freebsd_etc_integrity_trees). Backlog item 543.'
+            summary: Unexpected change under /etc or /usr/local/etc on {{ $labels.instance }}
+          labels:
+            severity: warning
+          isPaused: false
+          notification_settings:
+            receiver: NTFY
+            group_by:
+                - alertname
+                - grafana_folder
+                - instance
+        - uid: cg4p1zop7xqm8a
+          title: FreeBSDEtcIntegrityStale
+          condition: C
+          data:
+            - refId: A
+              queryType: instant
+              relativeTimeRange:
+                from: 10800
+                to: 0
+              datasourceUid: cefqyqv6j9c00e
+              model:
+                datasource:
+                    type: loki
+                    uid: cefqyqv6j9c00e
+                editorMode: code
+                expr: (sum by (instance) (count_over_time({filename="/var/log/all.log"} |= "etc_integrity[" |= "event=heartbeat" [3h])) > 0) unless (sum by (instance) (count_over_time({filename="/var/log/all.log"} |= "etc_integrity[" |= "event=heartbeat" [45m])) > 0)
+                instant: true
+                intervalMs: 1000
+                maxDataPoints: 43200
+                queryType: instant
+                refId: A
+            - refId: C
+              queryType: expression
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - C
+                      reducer:
+                        type: last
+                datasource:
+                    type: __expr__
+                    uid: __expr__
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          annotations:
+            description: 'Loki holds an etc_integrity heartbeat from {{ $labels.instance }} within the last 3 hours but none in the last 45 minutes, where cron runs the check every 15 minutes. The check is not running (cron.d entry gone, script removed, or a run stuck holding the lock under /var/db/etc_integrity), or the host stopped shipping logs (HostStoppedLogging then fires too). A stopped check can also mean tampering. On the host: ls -l /usr/local/etc/cron.d/etc_integrity /usr/local/libexec/etc_integrity /var/db/etc_integrity; sudo grep etc_integrity /var/log/cron | tail -3; sudo /usr/local/libexec/etc_integrity check. Clears by itself 3 hours after the last heartbeat, which does not mean it recovered. Backlog item 543.'
+            summary: No /etc integrity check on {{ $labels.instance }} for over 45 minutes
+          labels:
+            severity: warning
+          isPaused: false
+          notification_settings:
+            receiver: NTFY
+            group_by:
+                - alertname
+                - grafana_folder
+                - instance
         - uid: deoh3et5hsbuof
           title: MemoryOverThreshhold-Linux-Critical
           condition: C
