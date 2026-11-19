@@ -628,7 +628,7 @@ groups:
           execErrState: Error
           for: 1h
           annotations:
-            description: 'The newest object in Silo''s {{ $labels.bucket }} bucket is more than 14 days old, from silo-bucket-metrics.timer''s listing on podman01 (silo_bucket_newest_object_timestamp_seconds). No data means a bucket is empty or the listing failed: check silo_bucket_listing_success and journalctl -u silo-bucket-metrics.service on podman01. Covers camera01 and camera02 (camera01 since 2026-11-03, once it uploaded). Complements CameraUploadSilence, which watches the camera''s FTP connections in the gateway log. Item 457.'
+            description: 'The newest object in Silo''s {{ $labels.bucket }} bucket is more than 14 days old, from silo-bucket-metrics.timer''s listing on podman01 (silo_bucket_newest_object_timestamp_seconds). The cameras upload only when they detect an event, so a long quiet spell at home can fire this. No data means a bucket is empty or the listing failed: check silo_bucket_listing_success and journalctl -u silo-bucket-metrics.service on podman01. Covers camera01 and camera02 (camera01 since 2026-11-03). To tell a camera that stopped connecting from one whose uploads fail, query the gateway''s firewall log in Explore (loki) over a day or two: {job="integrations/syslog", hostname="unifi-dm01"} |= "IoT to Silo FTP" |= " DPT=21 " |= " SYN ", filtered by the camera''s address (camera02 is 10.0.30.49). Then check the Netatmo app''s FTP settings (server 10.0.1.231, port 21, one folder per camera), Uptime Kuma monitors 106 and 107, and BlackboxProbeFailed for job blackbox_ftp. Items 457 and 595.'
             summary: No new clip in {{ $labels.bucket }} for {{ humanizeDuration $values.A.Value }}
           labels:
             severity: warning
@@ -2563,54 +2563,6 @@ groups:
           annotations:
             description: 'job integrations/syslog holds lines from {{ $labels.hostname }} within the last 24 hours but none in the last 2 hours. Only unifi-dm01 is watched: the gateway logs continuously (firewall, DHCP, IDS), while the switches and APs can be silent for hours and are covered by UniFiDeviceStoppedReporting (unpoller) instead. Causes: remote syslog turned off in the UniFi console, or soundwave''s Alloy syslog listener (TCP 51893 / UDP 51898) stopped. On soundwave: sudo service alloy status; sockstat -l | grep 5189. Clears when lines resume.'
             summary: '{{ $labels.hostname }} has sent no syslog to soundwave for over 2 hours'
-          labels:
-            severity: warning
-          isPaused: false
-          notification_settings:
-            receiver: NTFY
-        - uid: bg2yjbkcauuiof
-          title: CameraUploadSilence
-          condition: C
-          data:
-            - refId: A
-              queryType: instant
-              relativeTimeRange:
-                from: 1209600
-                to: 0
-              datasourceUid: cefqyqv6j9c00e
-              model:
-                editorMode: code
-                expr: sum(count_over_time({job="integrations/syslog", hostname="unifi-dm01"} |= "IoT to Silo FTP" |= "SRC=10.0.30.49 " |= " DPT=21 " |= " SYN " [14d])) or vector(0)
-                intervalMs: 1000
-                maxDataPoints: 43200
-                queryType: instant
-                refId: A
-            - refId: C
-              datasourceUid: __expr__
-              model:
-                conditions:
-                    - evaluator:
-                        params:
-                            - 1
-                        type: lt
-                      operator:
-                        type: and
-                      query:
-                        params:
-                            - C
-                      reducer:
-                        type: last
-                expression: A
-                intervalMs: 1000
-                maxDataPoints: 43200
-                refId: C
-                type: threshold
-          noDataState: OK
-          execErrState: Error
-          for: 10m
-          annotations:
-            description: 'The UniFi gateway''s firewall log (policy "IoT to Silo FTP", job integrations/syslog) holds no new TCP connection from camera02 (10.0.30.49) to Silo''s FTP control port (10.0.1.231:21) in the last 14 days (item 448; 14 days decided 2026-11-01). The camera uploads only when it detects an event, so a long quiet spell at home can fire this. It also fires if the gateway stops logging (UniFiGatewayStoppedLogging) or the policy''s logging is turned off. A connection is not a clip: list the camera02 bucket in Silo to see what arrived. camera01 is not watched until Netatmo support restores it. Check the Netatmo app''s FTP settings (server 10.0.1.231, port 21, folder camera02), Uptime Kuma monitors 106 and 107, and BlackboxProbeFailed for job blackbox_ftp.'
-            summary: camera02 has opened no FTP connection to Silo in 14 days
           labels:
             severity: warning
           isPaused: false
