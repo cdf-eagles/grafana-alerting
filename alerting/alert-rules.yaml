@@ -1502,6 +1502,599 @@ groups:
           notification_settings:
             receiver: NTFY
     - orgId: 2
+      name: cybris
+      folder: Alert Rules
+      interval: 1m
+      rules:
+        - uid: dg305oi6ny2gwe
+          title: CybrisZoneTransferRefused
+          condition: C
+          data:
+            - refId: A
+              queryType: instant
+              relativeTimeRange:
+                from: 900
+                to: 0
+              datasourceUid: cefqyqv6j9c00e
+              model:
+                expr: sum by (instance, client) (count_over_time({instance=~".+\\.cybris\\.net", filename="/var/log/named/client_security.log"} |= "zone transfer" |= "denied" | regexp "client @\\S+ (?P<client>[0-9a-fA-F.:]+)#" [15m]))
+                intervalMs: 1000
+                maxDataPoints: 43200
+                queryType: instant
+                refId: A
+            - refId: B
+              datasourceUid: __expr__
+              model:
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                reducer: last
+                refId: B
+                settings:
+                    mode: dropNN
+                type: reduce
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 5
+                        type: gt
+                expression: B
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          annotations:
+            description: 'Rule designed in backlog item 193, built in item 397. Source: /var/log/named/client_security.log.'
+            summary: '{{ $labels.instance }}: more than 5 denied zone transfer requests from {{ $labels.client }} in 15 minutes'
+          labels:
+            area: security
+            severity: warning
+          isPaused: false
+        - uid: fg305panyrny8b
+          title: CybrisDynamicUpdateRefused
+          condition: C
+          data:
+            - refId: A
+              queryType: instant
+              relativeTimeRange:
+                from: 900
+                to: 0
+              datasourceUid: cefqyqv6j9c00e
+              model:
+                expr: sum by (instance) (count_over_time({instance=~".+\\.cybris\\.net", filename="/var/log/named/ddns.log"} |~ "update .*(denied|refused)|update failed" [15m]))
+                intervalMs: 1000
+                maxDataPoints: 43200
+                queryType: instant
+                refId: A
+            - refId: B
+              datasourceUid: __expr__
+              model:
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                reducer: last
+                refId: B
+                settings:
+                    mode: dropNN
+                type: reduce
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                expression: B
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          annotations:
+            description: 'Rule designed in backlog item 193, built in item 397. Source: /var/log/named/ddns.log.'
+            summary: '{{ $labels.instance }}: dynamic DNS update denied, refused or failed in the last 15 minutes'
+          labels:
+            area: security
+            severity: warning
+          isPaused: false
+        - uid: fg305ph60969sc
+          title: CybrisTSIGFailure
+          condition: C
+          data:
+            - refId: A
+              queryType: instant
+              relativeTimeRange:
+                from: 900
+                to: 0
+              datasourceUid: cefqyqv6j9c00e
+              model:
+                expr: sum by (instance) (count_over_time({instance=~".+\\.cybris\\.net", filename=~"/var/log/named/(client_security|ddns|named)\\.log"} |~ "tsig verify failure|invalid signature|BADKEY|BADSIG|BADTIME" [15m]))
+                intervalMs: 1000
+                maxDataPoints: 43200
+                queryType: instant
+                refId: A
+            - refId: B
+              datasourceUid: __expr__
+              model:
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                reducer: last
+                refId: B
+                settings:
+                    mode: dropNN
+                type: reduce
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                expression: B
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          annotations:
+            description: 'Rule designed in backlog item 193, built in item 397. Sources: client_security.log, ddns.log, named.log.'
+            summary: '{{ $labels.instance }}: TSIG verification failure in the last 15 minutes'
+          labels:
+            area: security
+            severity: critical
+          isPaused: false
+        - uid: ag305pp06s8hsa
+          title: CybrisDNSSECSigningError
+          condition: C
+          data:
+            - refId: A
+              queryType: instant
+              relativeTimeRange:
+                from: 1800
+                to: 0
+              datasourceUid: cefqyqv6j9c00e
+              model:
+                expr: sum by (instance) (count_over_time({instance=~".+\\.cybris\\.net", filename="/var/log/named/dnssec.log"} |~ "(?i)error|failed|expired" != "validating" [30m]))
+                intervalMs: 1000
+                maxDataPoints: 43200
+                queryType: instant
+                refId: A
+            - refId: B
+              datasourceUid: __expr__
+              model:
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                reducer: last
+                refId: B
+                settings:
+                    mode: dropNN
+                type: reduce
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                expression: B
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          annotations:
+            description: 'Rule designed in backlog item 193, built in item 397. Source: /var/log/named/dnssec.log. Lines containing ''validating'' (resolver-side checks of other people''s zones, 36 a day, all ''no valid signature found'') are excluded by the item 397 preview.'
+            summary: '{{ $labels.instance }}: DNSSEC error, failure or expiry in the last 30 minutes'
+          labels:
+            area: security
+            severity: critical
+          isPaused: false
+        - uid: bg305pv9551j4a
+          title: CybrisZoneLoadFailure
+          condition: C
+          data:
+            - refId: A
+              queryType: instant
+              relativeTimeRange:
+                from: 900
+                to: 0
+              datasourceUid: cefqyqv6j9c00e
+              model:
+                expr: sum by (instance) (count_over_time({instance=~".+\\.cybris\\.net", filename="/var/log/named/named.log"} |~ "not loaded due to errors|loading from master file .* failed" [15m]))
+                intervalMs: 1000
+                maxDataPoints: 43200
+                queryType: instant
+                refId: A
+            - refId: B
+              datasourceUid: __expr__
+              model:
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                reducer: last
+                refId: B
+                settings:
+                    mode: dropNN
+                type: reduce
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                expression: B
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          annotations:
+            description: 'Rule designed in backlog item 193, built in item 397. Source: /var/log/named/named.log.'
+            summary: '{{ $labels.instance }}: a DNS zone failed to load in the last 15 minutes'
+          labels:
+            area: security
+            severity: critical
+          isPaused: false
+        - uid: cg305q2a4cu80f
+          title: CybrisDNSRateLimiting
+          condition: C
+          data:
+            - refId: A
+              queryType: instant
+              relativeTimeRange:
+                from: 900
+                to: 0
+              datasourceUid: cefqyqv6j9c00e
+              model:
+                expr: sum by (instance) (count_over_time({instance=~".+\\.cybris\\.net", filename="/var/log/named/rate_limiting.log"} |~ "(?i)limit .*responses" [15m]))
+                intervalMs: 1000
+                maxDataPoints: 43200
+                queryType: instant
+                refId: A
+            - refId: B
+              datasourceUid: __expr__
+              model:
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                reducer: last
+                refId: B
+                settings:
+                    mode: dropNN
+                type: reduce
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 500
+                        type: gt
+                expression: B
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          annotations:
+            description: 'Rule designed in backlog item 193, built in item 397. Source: /var/log/named/rate_limiting.log. Response rate limiting is configured in log-only mode on persephone (lines read ''would limit ...'').'
+            summary: '{{ $labels.instance }}: more than 500 DNS responses rate-limited (or would be, in log-only mode) in 15 minutes'
+          labels:
+            area: security
+            severity: warning
+          isPaused: false
+        - uid: bg305q9ko6mm8f
+          title: CybrisWeb5xxSpike
+          condition: C
+          data:
+            - refId: A
+              queryType: instant
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: cefqyqv6j9c00e
+              model:
+                expr: sum by (instance) (count_over_time({instance=~".+\\.cybris\\.net", filename="/var/log/httpd/access.log"} | regexp `^(?P<client>\S+) \S+ \S+ (?:"[^"]*" )?\[[^\]]*\] "(?P<method>\S+) (?P<path>\S+) [^"]*" (?P<status>\d{3}) ` | status=~"5.." [10m]))
+                intervalMs: 1000
+                maxDataPoints: 43200
+                queryType: instant
+                refId: A
+            - refId: B
+              datasourceUid: __expr__
+              model:
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                reducer: last
+                refId: B
+                settings:
+                    mode: dropNN
+                type: reduce
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 20
+                        type: gt
+                expression: B
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          annotations:
+            description: 'Rule designed in backlog item 193, built in item 397. Source: /var/log/httpd/access.log. The regexp parser reads both Apache''s combined format and the vhost_noquery format (backlog item 530).'
+            summary: '{{ $labels.instance }}: more than 20 Apache 5xx responses in 10 minutes'
+          labels:
+            area: security
+            severity: warning
+          isPaused: false
+        - uid: dg305qiy9yl1cb
+          title: CybrisSensitivePathServed
+          condition: C
+          data:
+            - refId: A
+              queryType: instant
+              relativeTimeRange:
+                from: 900
+                to: 0
+              datasourceUid: cefqyqv6j9c00e
+              model:
+                expr: sum by (instance, client, path) (count_over_time({instance=~".+\\.cybris\\.net", filename="/var/log/httpd/access.log"} | regexp `^(?P<client>\S+) \S+ \S+ (?:"[^"]*" )?\[[^\]]*\] "(?P<method>\S+) (?P<path>\S+) [^"]*" (?P<status>\d{3}) ` | status=~"2.." | path=~"(?i)[^?]*(/\\.env|/\\.git/|/server-status|/server-info|phpinfo|\\.htpasswd|wp-config\\.php|\\.sql|\\.bak)([?].*)?" [15m]))
+                intervalMs: 1000
+                maxDataPoints: 43200
+                queryType: instant
+                refId: A
+            - refId: B
+              datasourceUid: __expr__
+              model:
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                reducer: last
+                refId: B
+                settings:
+                    mode: dropNN
+                type: reduce
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                expression: B
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          annotations:
+            description: 'Rule designed in backlog item 193, built in item 397. Source: /var/log/httpd/access.log. The path match stops at the query string: scanner requests such as /?file=../.env return the 1,253-byte home page with 200, and the item 397 preview showed the designed pattern would have fired on them. The regexp parser reads both Apache''s combined format and the vhost_noquery format, which logs no query string at all (backlog item 530).'
+            summary: '{{ $labels.instance }}: a sensitive path was served (2xx) to {{ $labels.client }}: {{ $labels.path }}'
+          labels:
+            area: security
+            severity: critical
+          isPaused: false
+        - uid: fg305qpxxqb5se
+          title: CybrisWebAuthBruteForce
+          condition: C
+          data:
+            - refId: A
+              queryType: instant
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: cefqyqv6j9c00e
+              model:
+                expr: sum by (instance, client) (count_over_time({instance=~".+\\.cybris\\.net", filename="/var/log/httpd/access.log"} | regexp `^(?P<client>\S+) \S+ \S+ (?:"[^"]*" )?\[[^\]]*\] "(?P<method>\S+) (?P<path>\S+) [^"]*" (?P<status>\d{3}) ` | status="401" [10m]))
+                intervalMs: 1000
+                maxDataPoints: 43200
+                queryType: instant
+                refId: A
+            - refId: B
+              datasourceUid: __expr__
+              model:
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                reducer: last
+                refId: B
+                settings:
+                    mode: dropNN
+                type: reduce
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 30
+                        type: gt
+                expression: B
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          annotations:
+            description: 'Rule designed in backlog item 193, built in item 397. Source: /var/log/httpd/access.log. The regexp parser reads both Apache''s combined format and the vhost_noquery format (backlog item 530).'
+            summary: '{{ $labels.instance }}: more than 30 HTTP 401 responses to {{ $labels.client }} in 10 minutes'
+          labels:
+            area: security
+            severity: warning
+          isPaused: false
+        - uid: cg305qwe8scu8c
+          title: CybrisApacheChildCrash
+          condition: C
+          data:
+            - refId: A
+              queryType: instant
+              relativeTimeRange:
+                from: 900
+                to: 0
+              datasourceUid: cefqyqv6j9c00e
+              model:
+                expr: sum by (instance) (count_over_time({instance=~".+\\.cybris\\.net", filename="/var/log/httpd/error.log"} |~ "exit signal (Segmentation fault|Bus error|Abort)|AH00052" [15m]))
+                intervalMs: 1000
+                maxDataPoints: 43200
+                queryType: instant
+                refId: A
+            - refId: B
+              datasourceUid: __expr__
+              model:
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                reducer: last
+                refId: B
+                settings:
+                    mode: dropNN
+                type: reduce
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                expression: B
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          annotations:
+            description: 'Rule designed in backlog item 193, built in item 397. Source: /var/log/httpd/error.log.'
+            summary: '{{ $labels.instance }}: an Apache child process crashed in the last 15 minutes'
+          labels:
+            area: security
+            severity: warning
+          isPaused: false
+        - uid: eg305r499a77ke
+          title: CybrisSSHAuthFailure
+          condition: C
+          data:
+            - refId: A
+              queryType: instant
+              relativeTimeRange:
+                from: 900
+                to: 0
+              datasourceUid: cefqyqv6j9c00e
+              model:
+                expr: 'sum by (instance) (count_over_time({instance=~".+\\.cybris\\.net", filename="/var/log/all.log"} |~ "sshd(-session)?\\[[0-9]+\\]: (Failed (password|publickey)|Invalid user|error: maximum authentication attempts)" [15m]))'
+                intervalMs: 1000
+                maxDataPoints: 43200
+                queryType: instant
+                refId: A
+            - refId: B
+              datasourceUid: __expr__
+              model:
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                reducer: last
+                refId: B
+                settings:
+                    mode: dropNN
+                type: reduce
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                expression: B
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          annotations:
+            description: 'Rule designed in backlog item 193, built in item 397. Source: /var/log/all.log. The process name is sshd-session on FreeBSD 15, so the match is sshd(-session)?; the designed ''sshd'' form could never have matched.'
+            summary: '{{ $labels.instance }}: SSH authentication failure in the last 15 minutes'
+          labels:
+            area: security
+            severity: warning
+          isPaused: false
+        - uid: dg305r9y5yccga
+          title: CybrisSudoFailure
+          condition: C
+          data:
+            - refId: A
+              queryType: instant
+              relativeTimeRange:
+                from: 900
+                to: 0
+              datasourceUid: cefqyqv6j9c00e
+              model:
+                expr: 'sum by (instance) (count_over_time({instance=~".+\\.cybris\\.net", filename="/var/log/all.log"} |~ "sudo\\[[0-9]+\\]: .*(incorrect password attempt|NOT in sudoers|authentication failure)" [15m]))'
+                intervalMs: 1000
+                maxDataPoints: 43200
+                queryType: instant
+                refId: A
+            - refId: B
+              datasourceUid: __expr__
+              model:
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                reducer: last
+                refId: B
+                settings:
+                    mode: dropNN
+                type: reduce
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                expression: B
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          annotations:
+            description: 'Rule designed in backlog item 193, built in item 397. Source: /var/log/all.log.'
+            summary: '{{ $labels.instance }}: sudo authentication failure in the last 15 minutes'
+          labels:
+            area: security
+            severity: warning
+          isPaused: false
+    - orgId: 2
       name: hardware
       folder: Alert Rules
       interval: 5m
@@ -2568,6 +3161,151 @@ groups:
           isPaused: false
           notification_settings:
             receiver: NTFY
+    - orgId: 2
+      name: macos-santa
+      folder: Alert Rules
+      interval: 1m
+      rules:
+        - uid: cg40f1sqdff9cb
+          title: SantaExecutionFromTempLocation
+          condition: C
+          data:
+            - refId: A
+              queryType: instant
+              relativeTimeRange:
+                from: 900
+                to: 0
+              datasourceUid: cefqyqv6j9c00e
+              model:
+                editorMode: code
+                expr: sum by (instance, path) (count_over_time({job="santa"} |= "action=EXEC" | regexp `\|path=(?P<path>[^|]*)` | path =~ `^(/private)?/tmp/.*|^/private/var/folders/.*|^/Users/[^/]+/Downloads/.*|^/Volumes/.*` [15m]))
+                intervalMs: 1000
+                maxDataPoints: 43200
+                queryType: instant
+                refId: A
+            - refId: B
+              datasourceUid: __expr__
+              model:
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                reducer: last
+                refId: B
+                settings:
+                    mode: dropNN
+                type: reduce
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                expression: B
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          annotations:
+            description: 'Santa (item 501) logged an execution from /tmp, /private/var/folders, a Downloads folder or a mounted volume in the last 15 minutes. Source: /var/db/santa/santa.log (job santa). Read the line, its parent (ppid) and its arguments in Explore (loki): {job="santa", instance="{{ $labels.instance }}"} |= "path={{ $labels.path }}". Installers under /private/var/folders and Homebrew builds under /private/tmp are expected; the soak adds exclusions for them.'
+            summary: '{{ $labels.instance }}: a program ran from a temporary or download location: {{ $labels.path }}'
+          labels:
+            area: security
+            severity: warning
+          isPaused: false
+        - uid: bg40f26fwv6rkb
+          title: SantaUnsignedExecution
+          condition: C
+          data:
+            - refId: A
+              queryType: instant
+              relativeTimeRange:
+                from: 900
+                to: 0
+              datasourceUid: cefqyqv6j9c00e
+              model:
+                editorMode: code
+                expr: sum by (instance, path) (count_over_time({job="santa"} |= "action=EXEC" !~ `\|cert_cn=` | regexp `\|path=(?P<path>[^|]*)` | path !~ `^/opt/homebrew/.*|^/Users/haides/Applications/VaultSnapshot\.app/Contents/MacOS/applet|^/Users/haides/\.cache/pre-commit/repo[a-z0-9_]{8}/(rustenv-default|golangenv-[^/]+)/bin/(ripsecrets|gitleaks|actionlint|golangci-lint)` [15m]))
+                intervalMs: 1000
+                maxDataPoints: 43200
+                queryType: instant
+                refId: A
+            - refId: B
+              datasourceUid: __expr__
+              model:
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                reducer: last
+                refId: B
+                settings:
+                    mode: dropNN
+                type: reduce
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                expression: B
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          annotations:
+            description: 'Santa (item 501) logged an execution with no signing certificate (no cert_cn field: unsigned or ad hoc signed) outside /opt/homebrew in the last 15 minutes. Apple''s own binaries always carry cert_cn, even when they have no teamid, so they never match. Excluded by exact path: shockwave''s own ad hoc signed ~/Applications/VaultSnapshot.app applet. Excluded by pattern (2026-11-13): pre-commit''s locally built hook binaries ripsecrets, gitleaks, actionlint and golangci-lint under ~/.cache/pre-commit/repo<8 chars>/(rustenv-default|golangenv-*)/bin/, which are ad hoc linker signed and change hash and folder on every hook rev bump. Read the line in Explore (loki): {job="santa", instance="{{ $labels.instance }}"} |= "path={{ $labels.path }}". Self-built tools are expected here until the soak adds their paths.'
+            summary: '{{ $labels.instance }}: an unsigned or ad hoc signed program ran outside Homebrew: {{ $labels.path }}'
+          labels:
+            area: security
+            severity: warning
+          isPaused: false
+        - uid: ag40f2i0bftvkb
+          title: SantaStoppedLogging
+          condition: C
+          data:
+            - refId: A
+              queryType: instant
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: cefqyqv6j9c00e
+              model:
+                editorMode: code
+                expr: (sum by (instance) (count_over_time({job="santa", instance!="quicksilver.sleem.net"}[6h])) > 0) unless (sum by (instance) (count_over_time({job="santa", instance!="quicksilver.sleem.net"}[1h])) > 0)
+                intervalMs: 1000
+                maxDataPoints: 43200
+                queryType: instant
+                refId: A
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          for: 10m
+          annotations:
+            description: 'Loki holds Santa lines (job santa, item 501) from {{ $labels.instance }} within the last 6 hours but none in the last hour; shockwave runs programs every few seconds, so silence means Santa stopped, lost Full Disk Access, was turned off, or Alloy''s santa tail stopped. HostStoppedLogging covers Alloy as a whole. quicksilver is excluded (a laptop that sleeps). On the Mac: santactl status; systemextensionsctl list | grep -i santa; ls -l /var/db/santa/santa.log; then Alloy''s log for the loki.source.file santa component. Clears when lines resume.'
+            summary: '{{ $labels.instance }}: Santa has sent no events for over an hour'
+          labels:
+            area: security
+            severity: warning
+          isPaused: false
     - orgId: 2
       name: notifier
       folder: Alert Rules
@@ -4946,6 +5684,262 @@ groups:
           notification_settings:
             receiver: NTFY
     - orgId: 2
+      name: os-audit
+      folder: Alert Rules
+      interval: 1m
+      rules:
+        - uid: os-audit-auth-failure
+          title: OSAuthFailure
+          condition: C
+          data:
+            - refId: A
+              queryType: instant
+              relativeTimeRange:
+                from: 900
+                to: 0
+              datasourceUid: cefqyqv6j9c00e
+              model:
+                editorMode: code
+                expr: 'sum by (instance) (count_over_time({filename="/var/log/audit.log"} |~ `^header,[0-9]+,[0-9]+,AUE_(openssh|sudo|su|login),` |= `,return,failure` [15m])) or sum by (instance) (count_over_time({instance=~`.+\.sleem\.net`, filename="/var/log/all.log"} |~ `(sshd(-session)?|sudo|su)\[[0-9]+\]: .*(Failed (password|publickey)|Invalid user|maximum authentication attempts|incorrect password attempt|NOT in sudoers|authentication failure|BAD SU)` [15m])) or sum by (instance) (count_over_time({transport="audit"} |~ `^AUDIT11(00|12) ` |= `res=failed` [15m]))'
+                intervalMs: 1000
+                maxDataPoints: 43200
+                queryType: instant
+                refId: A
+            - refId: B
+              datasourceUid: __expr__
+              model:
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                reducer: last
+                refId: B
+                settings:
+                    mode: dropNN
+                type: reduce
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                expression: B
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          annotations:
+            description: 'Item 499. A failed SSH, sudo, su or login authentication on {{ $labels.instance }} in the last 15 minutes. FreeBSD sources: /var/log/audit.log (praudit of /dev/auditpipe), events AUE_openssh, AUE_sudo, AUE_su and AUE_login ending return,failure; and, for sleem.net hosts, /var/log/all.log lines from sshd-session, sudo and su (Failed password or publickey, Invalid user, maximum authentication attempts, incorrect password attempt, NOT in sudoers, authentication failure, BAD SU), because FreeBSD''s sshd writes no OpenBSM record for an invalid user (item 499 alert proof, 2026-11-19). Fedora source: the journal''s audit transport, USER_AUTH (AUDIT1100) and USER_LOGIN (AUDIT1112) with res=failed. The 7-day soak to 2026-11-19 saw none on FreeBSD and 7 lines on Fedora, all from the Ansible control node (a wrong account or key). Read the lines in Explore (loki): {instance="{{ $labels.instance }}", filename=~"/var/log/(audit|all).log"} |~ "return,failure|Invalid user|Failed |BAD SU|sudo.*(incorrect|NOT in sudoers)" or {transport="audit", instance="{{ $labels.instance }}"} |= "res=failed"; check the source address. persephone''s sshd and sudo lines are also covered by CybrisSSHAuthFailure and CybrisSudoFailure.'
+            summary: '{{ $labels.instance }}: authentication failure in the last 15 minutes'
+          labels:
+            area: security
+            severity: warning
+          isPaused: false
+        - uid: os-audit-login-unexpected-src
+          title: OSLoginFromUnexpectedSource
+          condition: C
+          data:
+            - refId: A
+              queryType: instant
+              relativeTimeRange:
+                from: 900
+                to: 0
+              datasourceUid: cefqyqv6j9c00e
+              model:
+                editorMode: code
+                expr: sum by (instance, src) (count_over_time({filename="/var/log/audit.log"} |~ `^header,[0-9]+,[0-9]+,AUE_openssh,` |= `,return,success` | regexp `,(?P<src>[0-9.]+|[0-9a-f]*:[0-9a-f:]+),text,` | src != "" | src !~ `10\.0\.1\.[0-9]+|100\.(6[4-9]|[7-9][0-9]|1[01][0-9]|12[0-7])\.[0-9]+\.[0-9]+|fd7a:115c:a1e0:.*|127\.0\.0\.1|::1` [15m])) or sum by (instance, src) (count_over_time({transport="audit"} |~ `^AUDIT1112 ` |= `res=success` | regexp `addr=(?P<src>[^ ]+)` | src != "" | src != "?" | src !~ `10\.0\.1\.[0-9]+|100\.(6[4-9]|[7-9][0-9]|1[01][0-9]|12[0-7])\.[0-9]+\.[0-9]+|fd7a:115c:a1e0:.*|127\.0\.0\.1|::1` [15m]))
+                intervalMs: 1000
+                maxDataPoints: 43200
+                queryType: instant
+                refId: A
+            - refId: B
+              datasourceUid: __expr__
+              model:
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                reducer: last
+                refId: B
+                settings:
+                    mode: dropNN
+                type: reduce
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                expression: B
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          annotations:
+            description: 'Item 499. A successful SSH login recorded in the OS audit trail came from an address outside the home network 10.0.1.0/24, the tailnet (100.64.0.0/10 and fd7a:115c:a1e0::/48) and loopback, in the last 15 minutes. No host takes SSH from the internet (persephone has no public SSH), so treat this as a possible compromise until it is explained. FreeBSD: AUE_openssh ending return,success; Fedora: USER_LOGIN (AUDIT1112) with res=success. Soak to 2026-11-19: 0. Read the line in Explore (loki): {instance="{{ $labels.instance }}"} |= "{{ $labels.src }}". When a new trusted network is added, widen the address pattern in this rule.'
+            summary: '{{ $labels.instance }}: login from unexpected address {{ $labels.src }}'
+          labels:
+            area: security
+            severity: critical
+          isPaused: false
+        - uid: os-audit-freebsd-modload
+          title: FreeBSDKernelModuleLoaded
+          condition: C
+          data:
+            - refId: A
+              queryType: instant
+              relativeTimeRange:
+                from: 900
+                to: 0
+              datasourceUid: cefqyqv6j9c00e
+              model:
+                editorMode: code
+                expr: sum by (instance, user) (count_over_time({filename="/var/log/audit.log"} |~ `^header,[0-9]+,[0-9]+,AUE_MODLOAD,` |= `,return,success` !~ `,subject(_ex)?,-1,` | regexp `,subject(_ex)?,(?P<user>[^,]+),` [15m]))
+                intervalMs: 1000
+                maxDataPoints: 43200
+                queryType: instant
+                refId: A
+            - refId: B
+              datasourceUid: __expr__
+              model:
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                reducer: last
+                refId: B
+                settings:
+                    mode: dropNN
+                type: reduce
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                expression: B
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          annotations:
+            description: 'Item 499. AUE_MODLOAD ending return,success from a login session (audit user {{ $labels.user }}) in the last 15 minutes. Loads at boot or from rc scripts are non-attributable (audit ID -1) and excluded, as are failed loads. An Ansible apply that loads a module fires this under the automation account. Soak to 2026-11-19: 0 (the only attributable loads were failures). Read the line in Explore (loki): {filename="/var/log/audit.log", instance="{{ $labels.instance }}"} |= "AUE_MODLOAD"; then kldstat on the host.'
+            summary: '{{ $labels.instance }}: kernel module loaded by {{ $labels.user }}'
+          labels:
+            area: security
+            severity: warning
+          isPaused: false
+        - uid: os-audit-fedora-etc-write
+          title: FedoraEtcWriteByPerson
+          condition: C
+          data:
+            - refId: A
+              queryType: instant
+              relativeTimeRange:
+                from: 900
+                to: 0
+              datasourceUid: cefqyqv6j9c00e
+              model:
+                editorMode: code
+                expr: sum by (instance, auid, exe) (count_over_time({transport="audit"} |~ `^SYSCALL ` |= `key="etc_write"` | regexp `auid=(?P<auid>[0-9]+) .*exe="(?P<exe>[^"]+)"` | auid != "" | auid != "4294967295" | auid != "450" [15m]))
+                intervalMs: 1000
+                maxDataPoints: 43200
+                queryType: instant
+                refId: A
+            - refId: B
+              datasourceUid: __expr__
+              model:
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                reducer: last
+                refId: B
+                settings:
+                    mode: dropNN
+                type: reduce
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                expression: B
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          annotations:
+            description: 'Item 499. The Fedora audit rule -w /etc -p wa (key etc_write) recorded a write or attribute change from a login session other than the automation account (audit ID 450) in the last 15 minutes. Writes by system services (audit ID unset) are excluded. Soak to 2026-11-19: 0. FreeBSD has no path watch; /etc there is item 543. Read the record in Explore (loki): {transport="audit", instance="{{ $labels.instance }}"} |= "etc_write", then the PATH lines with the same serial.'
+            summary: '{{ $labels.instance }}: {{ $labels.exe }} wrote under /etc as audit ID {{ $labels.auid }}'
+          labels:
+            area: security
+            severity: warning
+          isPaused: false
+        - uid: os-audit-stream-silent
+          title: OSAuditStreamSilent
+          condition: C
+          data:
+            - refId: A
+              queryType: instant
+              relativeTimeRange:
+                from: 21600
+                to: 0
+              datasourceUid: cefqyqv6j9c00e
+              model:
+                editorMode: code
+                expr: ((sum by (instance) (count_over_time({filename="/var/log/audit.log", instance!~`(imgtest|fedtest)\.sleem\.net`}[6h])) > 0) unless (sum by (instance) (count_over_time({filename="/var/log/audit.log", instance!~`(imgtest|fedtest)\.sleem\.net`}[30m])) > 0)) or ((sum by (instance) (count_over_time({transport="audit", instance!~`(imgtest|fedtest)\.sleem\.net`}[6h])) > 0) unless (sum by (instance) (count_over_time({transport="audit", instance!~`(imgtest|fedtest)\.sleem\.net`}[30m])) > 0))
+                intervalMs: 1000
+                maxDataPoints: 43200
+                queryType: instant
+                refId: A
+            - refId: B
+              datasourceUid: __expr__
+              model:
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                reducer: last
+                refId: B
+                settings:
+                    mode: dropNN
+                type: reduce
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                expression: B
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          for: 10m
+          annotations:
+            description: 'Item 499. Loki holds audit lines from {{ $labels.instance }} within the last 6 hours but none in the last 30 minutes. Every host writes several a minute (cron''s audit-state check on FreeBSD; service and session records on Fedora); the soak to 2026-11-19 never saw fewer than 20 FreeBSD or 5 Fedora lines in 30 minutes. FreeBSD causes: auditd or audit_text stopped (monit restarts each up to three times, then unmonitors it), /var/log/audit.log lost its root:logread mode, or someone ran audit -t or stopped auditd. Fedora causes: auditd or systemd-journald-audit.socket stopped, or the audit rules were cleared. HostStoppedLogging covers Alloy as a whole. On FreeBSD: sudo service auditd status; sudo service audit_text status; sudo monit summary; ls -l /var/log/audit.log. On Fedora: sudo systemctl status auditd systemd-journald-audit.socket; sudo auditctl -s. The bootstrap rehearsal''s scratch guests imgtest and fedtest (item 483) are excluded. Clears when lines resume.'
+            summary: '{{ $labels.instance }}: the OS audit trail has sent nothing for 30 minutes'
+          labels:
+            area: security
+            severity: warning
+          isPaused: false
+    - orgId: 2
       name: unifi
       folder: Alert Rules
       interval: 1m
@@ -5888,999 +6882,5 @@ groups:
             summary: zpool-status-exporter collector {{ $labels.collector }} on {{ $labels.instance }} is failing
           labels:
             __converted_prometheus_rule__: "true"
-            severity: warning
-          isPaused: false
-    - orgId: 2
-      name: cybris
-      folder: Security
-      interval: 1m
-      rules:
-        - uid: dg305oi6ny2gwe
-          title: CybrisZoneTransferRefused
-          condition: C
-          data:
-            - refId: A
-              queryType: instant
-              relativeTimeRange:
-                from: 900
-                to: 0
-              datasourceUid: cefqyqv6j9c00e
-              model:
-                expr: sum by (instance, client) (count_over_time({instance=~".+\\.cybris\\.net", filename="/var/log/named/client_security.log"} |= "zone transfer" |= "denied" | regexp "client @\\S+ (?P<client>[0-9a-fA-F.:]+)#" [15m]))
-                intervalMs: 1000
-                maxDataPoints: 43200
-                queryType: instant
-                refId: A
-            - refId: B
-              datasourceUid: __expr__
-              model:
-                expression: A
-                intervalMs: 1000
-                maxDataPoints: 43200
-                reducer: last
-                refId: B
-                settings:
-                    mode: dropNN
-                type: reduce
-            - refId: C
-              datasourceUid: __expr__
-              model:
-                conditions:
-                    - evaluator:
-                        params:
-                            - 5
-                        type: gt
-                expression: B
-                intervalMs: 1000
-                maxDataPoints: 43200
-                refId: C
-                type: threshold
-          noDataState: OK
-          execErrState: Error
-          annotations:
-            description: 'Rule designed in backlog item 193, built in item 397. Source: /var/log/named/client_security.log.'
-            summary: '{{ $labels.instance }}: more than 5 denied zone transfer requests from {{ $labels.client }} in 15 minutes'
-          labels:
-            area: security
-            severity: warning
-          isPaused: false
-        - uid: fg305panyrny8b
-          title: CybrisDynamicUpdateRefused
-          condition: C
-          data:
-            - refId: A
-              queryType: instant
-              relativeTimeRange:
-                from: 900
-                to: 0
-              datasourceUid: cefqyqv6j9c00e
-              model:
-                expr: sum by (instance) (count_over_time({instance=~".+\\.cybris\\.net", filename="/var/log/named/ddns.log"} |~ "update .*(denied|refused)|update failed" [15m]))
-                intervalMs: 1000
-                maxDataPoints: 43200
-                queryType: instant
-                refId: A
-            - refId: B
-              datasourceUid: __expr__
-              model:
-                expression: A
-                intervalMs: 1000
-                maxDataPoints: 43200
-                reducer: last
-                refId: B
-                settings:
-                    mode: dropNN
-                type: reduce
-            - refId: C
-              datasourceUid: __expr__
-              model:
-                conditions:
-                    - evaluator:
-                        params:
-                            - 0
-                        type: gt
-                expression: B
-                intervalMs: 1000
-                maxDataPoints: 43200
-                refId: C
-                type: threshold
-          noDataState: OK
-          execErrState: Error
-          annotations:
-            description: 'Rule designed in backlog item 193, built in item 397. Source: /var/log/named/ddns.log.'
-            summary: '{{ $labels.instance }}: dynamic DNS update denied, refused or failed in the last 15 minutes'
-          labels:
-            area: security
-            severity: warning
-          isPaused: false
-        - uid: fg305ph60969sc
-          title: CybrisTSIGFailure
-          condition: C
-          data:
-            - refId: A
-              queryType: instant
-              relativeTimeRange:
-                from: 900
-                to: 0
-              datasourceUid: cefqyqv6j9c00e
-              model:
-                expr: sum by (instance) (count_over_time({instance=~".+\\.cybris\\.net", filename=~"/var/log/named/(client_security|ddns|named)\\.log"} |~ "tsig verify failure|invalid signature|BADKEY|BADSIG|BADTIME" [15m]))
-                intervalMs: 1000
-                maxDataPoints: 43200
-                queryType: instant
-                refId: A
-            - refId: B
-              datasourceUid: __expr__
-              model:
-                expression: A
-                intervalMs: 1000
-                maxDataPoints: 43200
-                reducer: last
-                refId: B
-                settings:
-                    mode: dropNN
-                type: reduce
-            - refId: C
-              datasourceUid: __expr__
-              model:
-                conditions:
-                    - evaluator:
-                        params:
-                            - 0
-                        type: gt
-                expression: B
-                intervalMs: 1000
-                maxDataPoints: 43200
-                refId: C
-                type: threshold
-          noDataState: OK
-          execErrState: Error
-          annotations:
-            description: 'Rule designed in backlog item 193, built in item 397. Sources: client_security.log, ddns.log, named.log.'
-            summary: '{{ $labels.instance }}: TSIG verification failure in the last 15 minutes'
-          labels:
-            area: security
-            severity: critical
-          isPaused: false
-        - uid: ag305pp06s8hsa
-          title: CybrisDNSSECSigningError
-          condition: C
-          data:
-            - refId: A
-              queryType: instant
-              relativeTimeRange:
-                from: 1800
-                to: 0
-              datasourceUid: cefqyqv6j9c00e
-              model:
-                expr: sum by (instance) (count_over_time({instance=~".+\\.cybris\\.net", filename="/var/log/named/dnssec.log"} |~ "(?i)error|failed|expired" != "validating" [30m]))
-                intervalMs: 1000
-                maxDataPoints: 43200
-                queryType: instant
-                refId: A
-            - refId: B
-              datasourceUid: __expr__
-              model:
-                expression: A
-                intervalMs: 1000
-                maxDataPoints: 43200
-                reducer: last
-                refId: B
-                settings:
-                    mode: dropNN
-                type: reduce
-            - refId: C
-              datasourceUid: __expr__
-              model:
-                conditions:
-                    - evaluator:
-                        params:
-                            - 0
-                        type: gt
-                expression: B
-                intervalMs: 1000
-                maxDataPoints: 43200
-                refId: C
-                type: threshold
-          noDataState: OK
-          execErrState: Error
-          annotations:
-            description: 'Rule designed in backlog item 193, built in item 397. Source: /var/log/named/dnssec.log. Lines containing ''validating'' (resolver-side checks of other people''s zones, 36 a day, all ''no valid signature found'') are excluded by the item 397 preview.'
-            summary: '{{ $labels.instance }}: DNSSEC error, failure or expiry in the last 30 minutes'
-          labels:
-            area: security
-            severity: critical
-          isPaused: false
-        - uid: bg305pv9551j4a
-          title: CybrisZoneLoadFailure
-          condition: C
-          data:
-            - refId: A
-              queryType: instant
-              relativeTimeRange:
-                from: 900
-                to: 0
-              datasourceUid: cefqyqv6j9c00e
-              model:
-                expr: sum by (instance) (count_over_time({instance=~".+\\.cybris\\.net", filename="/var/log/named/named.log"} |~ "not loaded due to errors|loading from master file .* failed" [15m]))
-                intervalMs: 1000
-                maxDataPoints: 43200
-                queryType: instant
-                refId: A
-            - refId: B
-              datasourceUid: __expr__
-              model:
-                expression: A
-                intervalMs: 1000
-                maxDataPoints: 43200
-                reducer: last
-                refId: B
-                settings:
-                    mode: dropNN
-                type: reduce
-            - refId: C
-              datasourceUid: __expr__
-              model:
-                conditions:
-                    - evaluator:
-                        params:
-                            - 0
-                        type: gt
-                expression: B
-                intervalMs: 1000
-                maxDataPoints: 43200
-                refId: C
-                type: threshold
-          noDataState: OK
-          execErrState: Error
-          annotations:
-            description: 'Rule designed in backlog item 193, built in item 397. Source: /var/log/named/named.log.'
-            summary: '{{ $labels.instance }}: a DNS zone failed to load in the last 15 minutes'
-          labels:
-            area: security
-            severity: critical
-          isPaused: false
-        - uid: cg305q2a4cu80f
-          title: CybrisDNSRateLimiting
-          condition: C
-          data:
-            - refId: A
-              queryType: instant
-              relativeTimeRange:
-                from: 900
-                to: 0
-              datasourceUid: cefqyqv6j9c00e
-              model:
-                expr: sum by (instance) (count_over_time({instance=~".+\\.cybris\\.net", filename="/var/log/named/rate_limiting.log"} |~ "(?i)limit .*responses" [15m]))
-                intervalMs: 1000
-                maxDataPoints: 43200
-                queryType: instant
-                refId: A
-            - refId: B
-              datasourceUid: __expr__
-              model:
-                expression: A
-                intervalMs: 1000
-                maxDataPoints: 43200
-                reducer: last
-                refId: B
-                settings:
-                    mode: dropNN
-                type: reduce
-            - refId: C
-              datasourceUid: __expr__
-              model:
-                conditions:
-                    - evaluator:
-                        params:
-                            - 500
-                        type: gt
-                expression: B
-                intervalMs: 1000
-                maxDataPoints: 43200
-                refId: C
-                type: threshold
-          noDataState: OK
-          execErrState: Error
-          annotations:
-            description: 'Rule designed in backlog item 193, built in item 397. Source: /var/log/named/rate_limiting.log. Response rate limiting is configured in log-only mode on persephone (lines read ''would limit ...'').'
-            summary: '{{ $labels.instance }}: more than 500 DNS responses rate-limited (or would be, in log-only mode) in 15 minutes'
-          labels:
-            area: security
-            severity: warning
-          isPaused: false
-        - uid: bg305q9ko6mm8f
-          title: CybrisWeb5xxSpike
-          condition: C
-          data:
-            - refId: A
-              queryType: instant
-              relativeTimeRange:
-                from: 600
-                to: 0
-              datasourceUid: cefqyqv6j9c00e
-              model:
-                expr: sum by (instance) (count_over_time({instance=~".+\\.cybris\\.net", filename="/var/log/httpd/access.log"} | regexp `^(?P<client>\S+) \S+ \S+ (?:"[^"]*" )?\[[^\]]*\] "(?P<method>\S+) (?P<path>\S+) [^"]*" (?P<status>\d{3}) ` | status=~"5.." [10m]))
-                intervalMs: 1000
-                maxDataPoints: 43200
-                queryType: instant
-                refId: A
-            - refId: B
-              datasourceUid: __expr__
-              model:
-                expression: A
-                intervalMs: 1000
-                maxDataPoints: 43200
-                reducer: last
-                refId: B
-                settings:
-                    mode: dropNN
-                type: reduce
-            - refId: C
-              datasourceUid: __expr__
-              model:
-                conditions:
-                    - evaluator:
-                        params:
-                            - 20
-                        type: gt
-                expression: B
-                intervalMs: 1000
-                maxDataPoints: 43200
-                refId: C
-                type: threshold
-          noDataState: OK
-          execErrState: Error
-          annotations:
-            description: 'Rule designed in backlog item 193, built in item 397. Source: /var/log/httpd/access.log. The regexp parser reads both Apache''s combined format and the vhost_noquery format (backlog item 530).'
-            summary: '{{ $labels.instance }}: more than 20 Apache 5xx responses in 10 minutes'
-          labels:
-            area: security
-            severity: warning
-          isPaused: false
-        - uid: dg305qiy9yl1cb
-          title: CybrisSensitivePathServed
-          condition: C
-          data:
-            - refId: A
-              queryType: instant
-              relativeTimeRange:
-                from: 900
-                to: 0
-              datasourceUid: cefqyqv6j9c00e
-              model:
-                expr: sum by (instance, client, path) (count_over_time({instance=~".+\\.cybris\\.net", filename="/var/log/httpd/access.log"} | regexp `^(?P<client>\S+) \S+ \S+ (?:"[^"]*" )?\[[^\]]*\] "(?P<method>\S+) (?P<path>\S+) [^"]*" (?P<status>\d{3}) ` | status=~"2.." | path=~"(?i)[^?]*(/\\.env|/\\.git/|/server-status|/server-info|phpinfo|\\.htpasswd|wp-config\\.php|\\.sql|\\.bak)([?].*)?" [15m]))
-                intervalMs: 1000
-                maxDataPoints: 43200
-                queryType: instant
-                refId: A
-            - refId: B
-              datasourceUid: __expr__
-              model:
-                expression: A
-                intervalMs: 1000
-                maxDataPoints: 43200
-                reducer: last
-                refId: B
-                settings:
-                    mode: dropNN
-                type: reduce
-            - refId: C
-              datasourceUid: __expr__
-              model:
-                conditions:
-                    - evaluator:
-                        params:
-                            - 0
-                        type: gt
-                expression: B
-                intervalMs: 1000
-                maxDataPoints: 43200
-                refId: C
-                type: threshold
-          noDataState: OK
-          execErrState: Error
-          annotations:
-            description: 'Rule designed in backlog item 193, built in item 397. Source: /var/log/httpd/access.log. The path match stops at the query string: scanner requests such as /?file=../.env return the 1,253-byte home page with 200, and the item 397 preview showed the designed pattern would have fired on them. The regexp parser reads both Apache''s combined format and the vhost_noquery format, which logs no query string at all (backlog item 530).'
-            summary: '{{ $labels.instance }}: a sensitive path was served (2xx) to {{ $labels.client }}: {{ $labels.path }}'
-          labels:
-            area: security
-            severity: critical
-          isPaused: false
-        - uid: fg305qpxxqb5se
-          title: CybrisWebAuthBruteForce
-          condition: C
-          data:
-            - refId: A
-              queryType: instant
-              relativeTimeRange:
-                from: 600
-                to: 0
-              datasourceUid: cefqyqv6j9c00e
-              model:
-                expr: sum by (instance, client) (count_over_time({instance=~".+\\.cybris\\.net", filename="/var/log/httpd/access.log"} | regexp `^(?P<client>\S+) \S+ \S+ (?:"[^"]*" )?\[[^\]]*\] "(?P<method>\S+) (?P<path>\S+) [^"]*" (?P<status>\d{3}) ` | status="401" [10m]))
-                intervalMs: 1000
-                maxDataPoints: 43200
-                queryType: instant
-                refId: A
-            - refId: B
-              datasourceUid: __expr__
-              model:
-                expression: A
-                intervalMs: 1000
-                maxDataPoints: 43200
-                reducer: last
-                refId: B
-                settings:
-                    mode: dropNN
-                type: reduce
-            - refId: C
-              datasourceUid: __expr__
-              model:
-                conditions:
-                    - evaluator:
-                        params:
-                            - 30
-                        type: gt
-                expression: B
-                intervalMs: 1000
-                maxDataPoints: 43200
-                refId: C
-                type: threshold
-          noDataState: OK
-          execErrState: Error
-          annotations:
-            description: 'Rule designed in backlog item 193, built in item 397. Source: /var/log/httpd/access.log. The regexp parser reads both Apache''s combined format and the vhost_noquery format (backlog item 530).'
-            summary: '{{ $labels.instance }}: more than 30 HTTP 401 responses to {{ $labels.client }} in 10 minutes'
-          labels:
-            area: security
-            severity: warning
-          isPaused: false
-        - uid: cg305qwe8scu8c
-          title: CybrisApacheChildCrash
-          condition: C
-          data:
-            - refId: A
-              queryType: instant
-              relativeTimeRange:
-                from: 900
-                to: 0
-              datasourceUid: cefqyqv6j9c00e
-              model:
-                expr: sum by (instance) (count_over_time({instance=~".+\\.cybris\\.net", filename="/var/log/httpd/error.log"} |~ "exit signal (Segmentation fault|Bus error|Abort)|AH00052" [15m]))
-                intervalMs: 1000
-                maxDataPoints: 43200
-                queryType: instant
-                refId: A
-            - refId: B
-              datasourceUid: __expr__
-              model:
-                expression: A
-                intervalMs: 1000
-                maxDataPoints: 43200
-                reducer: last
-                refId: B
-                settings:
-                    mode: dropNN
-                type: reduce
-            - refId: C
-              datasourceUid: __expr__
-              model:
-                conditions:
-                    - evaluator:
-                        params:
-                            - 0
-                        type: gt
-                expression: B
-                intervalMs: 1000
-                maxDataPoints: 43200
-                refId: C
-                type: threshold
-          noDataState: OK
-          execErrState: Error
-          annotations:
-            description: 'Rule designed in backlog item 193, built in item 397. Source: /var/log/httpd/error.log.'
-            summary: '{{ $labels.instance }}: an Apache child process crashed in the last 15 minutes'
-          labels:
-            area: security
-            severity: warning
-          isPaused: false
-        - uid: eg305r499a77ke
-          title: CybrisSSHAuthFailure
-          condition: C
-          data:
-            - refId: A
-              queryType: instant
-              relativeTimeRange:
-                from: 900
-                to: 0
-              datasourceUid: cefqyqv6j9c00e
-              model:
-                expr: 'sum by (instance) (count_over_time({instance=~".+\\.cybris\\.net", filename="/var/log/all.log"} |~ "sshd(-session)?\\[[0-9]+\\]: (Failed (password|publickey)|Invalid user|error: maximum authentication attempts)" [15m]))'
-                intervalMs: 1000
-                maxDataPoints: 43200
-                queryType: instant
-                refId: A
-            - refId: B
-              datasourceUid: __expr__
-              model:
-                expression: A
-                intervalMs: 1000
-                maxDataPoints: 43200
-                reducer: last
-                refId: B
-                settings:
-                    mode: dropNN
-                type: reduce
-            - refId: C
-              datasourceUid: __expr__
-              model:
-                conditions:
-                    - evaluator:
-                        params:
-                            - 0
-                        type: gt
-                expression: B
-                intervalMs: 1000
-                maxDataPoints: 43200
-                refId: C
-                type: threshold
-          noDataState: OK
-          execErrState: Error
-          annotations:
-            description: 'Rule designed in backlog item 193, built in item 397. Source: /var/log/all.log. The process name is sshd-session on FreeBSD 15, so the match is sshd(-session)?; the designed ''sshd'' form could never have matched.'
-            summary: '{{ $labels.instance }}: SSH authentication failure in the last 15 minutes'
-          labels:
-            area: security
-            severity: warning
-          isPaused: false
-        - uid: dg305r9y5yccga
-          title: CybrisSudoFailure
-          condition: C
-          data:
-            - refId: A
-              queryType: instant
-              relativeTimeRange:
-                from: 900
-                to: 0
-              datasourceUid: cefqyqv6j9c00e
-              model:
-                expr: 'sum by (instance) (count_over_time({instance=~".+\\.cybris\\.net", filename="/var/log/all.log"} |~ "sudo\\[[0-9]+\\]: .*(incorrect password attempt|NOT in sudoers|authentication failure)" [15m]))'
-                intervalMs: 1000
-                maxDataPoints: 43200
-                queryType: instant
-                refId: A
-            - refId: B
-              datasourceUid: __expr__
-              model:
-                expression: A
-                intervalMs: 1000
-                maxDataPoints: 43200
-                reducer: last
-                refId: B
-                settings:
-                    mode: dropNN
-                type: reduce
-            - refId: C
-              datasourceUid: __expr__
-              model:
-                conditions:
-                    - evaluator:
-                        params:
-                            - 0
-                        type: gt
-                expression: B
-                intervalMs: 1000
-                maxDataPoints: 43200
-                refId: C
-                type: threshold
-          noDataState: OK
-          execErrState: Error
-          annotations:
-            description: 'Rule designed in backlog item 193, built in item 397. Source: /var/log/all.log.'
-            summary: '{{ $labels.instance }}: sudo authentication failure in the last 15 minutes'
-          labels:
-            area: security
-            severity: warning
-          isPaused: false
-    - orgId: 2
-      name: macos-santa
-      folder: Security
-      interval: 1m
-      rules:
-        - uid: cg40f1sqdff9cb
-          title: SantaExecutionFromTempLocation
-          condition: C
-          data:
-            - refId: A
-              queryType: instant
-              relativeTimeRange:
-                from: 900
-                to: 0
-              datasourceUid: cefqyqv6j9c00e
-              model:
-                editorMode: code
-                expr: sum by (instance, path) (count_over_time({job="santa"} |= "action=EXEC" | regexp `\|path=(?P<path>[^|]*)` | path =~ `^(/private)?/tmp/.*|^/private/var/folders/.*|^/Users/[^/]+/Downloads/.*|^/Volumes/.*` [15m]))
-                intervalMs: 1000
-                maxDataPoints: 43200
-                queryType: instant
-                refId: A
-            - refId: B
-              datasourceUid: __expr__
-              model:
-                expression: A
-                intervalMs: 1000
-                maxDataPoints: 43200
-                reducer: last
-                refId: B
-                settings:
-                    mode: dropNN
-                type: reduce
-            - refId: C
-              datasourceUid: __expr__
-              model:
-                conditions:
-                    - evaluator:
-                        params:
-                            - 0
-                        type: gt
-                expression: B
-                intervalMs: 1000
-                maxDataPoints: 43200
-                refId: C
-                type: threshold
-          noDataState: OK
-          execErrState: Error
-          annotations:
-            description: 'Santa (item 501) logged an execution from /tmp, /private/var/folders, a Downloads folder or a mounted volume in the last 15 minutes. Source: /var/db/santa/santa.log (job santa). Read the line, its parent (ppid) and its arguments in Explore (loki): {job="santa", instance="{{ $labels.instance }}"} |= "path={{ $labels.path }}". Installers under /private/var/folders and Homebrew builds under /private/tmp are expected; the soak adds exclusions for them.'
-            summary: '{{ $labels.instance }}: a program ran from a temporary or download location: {{ $labels.path }}'
-          labels:
-            area: security
-            severity: warning
-          isPaused: false
-        - uid: bg40f26fwv6rkb
-          title: SantaUnsignedExecution
-          condition: C
-          data:
-            - refId: A
-              queryType: instant
-              relativeTimeRange:
-                from: 900
-                to: 0
-              datasourceUid: cefqyqv6j9c00e
-              model:
-                editorMode: code
-                expr: sum by (instance, path) (count_over_time({job="santa"} |= "action=EXEC" !~ `\|cert_cn=` | regexp `\|path=(?P<path>[^|]*)` | path !~ `^/opt/homebrew/.*|^/Users/haides/Applications/VaultSnapshot\.app/Contents/MacOS/applet|^/Users/haides/\.cache/pre-commit/repo[a-z0-9_]{8}/(rustenv-default|golangenv-[^/]+)/bin/(ripsecrets|gitleaks|actionlint|golangci-lint)` [15m]))
-                intervalMs: 1000
-                maxDataPoints: 43200
-                queryType: instant
-                refId: A
-            - refId: B
-              datasourceUid: __expr__
-              model:
-                expression: A
-                intervalMs: 1000
-                maxDataPoints: 43200
-                reducer: last
-                refId: B
-                settings:
-                    mode: dropNN
-                type: reduce
-            - refId: C
-              datasourceUid: __expr__
-              model:
-                conditions:
-                    - evaluator:
-                        params:
-                            - 0
-                        type: gt
-                expression: B
-                intervalMs: 1000
-                maxDataPoints: 43200
-                refId: C
-                type: threshold
-          noDataState: OK
-          execErrState: Error
-          annotations:
-            description: 'Santa (item 501) logged an execution with no signing certificate (no cert_cn field: unsigned or ad hoc signed) outside /opt/homebrew in the last 15 minutes. Apple''s own binaries always carry cert_cn, even when they have no teamid, so they never match. Excluded by exact path: shockwave''s own ad hoc signed ~/Applications/VaultSnapshot.app applet. Excluded by pattern (2026-11-13): pre-commit''s locally built hook binaries ripsecrets, gitleaks, actionlint and golangci-lint under ~/.cache/pre-commit/repo<8 chars>/(rustenv-default|golangenv-*)/bin/, which are ad hoc linker signed and change hash and folder on every hook rev bump. Read the line in Explore (loki): {job="santa", instance="{{ $labels.instance }}"} |= "path={{ $labels.path }}". Self-built tools are expected here until the soak adds their paths.'
-            summary: '{{ $labels.instance }}: an unsigned or ad hoc signed program ran outside Homebrew: {{ $labels.path }}'
-          labels:
-            area: security
-            severity: warning
-          isPaused: false
-        - uid: ag40f2i0bftvkb
-          title: SantaStoppedLogging
-          condition: C
-          data:
-            - refId: A
-              queryType: instant
-              relativeTimeRange:
-                from: 600
-                to: 0
-              datasourceUid: cefqyqv6j9c00e
-              model:
-                editorMode: code
-                expr: (sum by (instance) (count_over_time({job="santa", instance!="quicksilver.sleem.net"}[6h])) > 0) unless (sum by (instance) (count_over_time({job="santa", instance!="quicksilver.sleem.net"}[1h])) > 0)
-                intervalMs: 1000
-                maxDataPoints: 43200
-                queryType: instant
-                refId: A
-            - refId: C
-              datasourceUid: __expr__
-              model:
-                conditions:
-                    - evaluator:
-                        params:
-                            - 0
-                        type: gt
-                expression: A
-                intervalMs: 1000
-                maxDataPoints: 43200
-                refId: C
-                type: threshold
-          noDataState: OK
-          execErrState: Error
-          for: 10m
-          annotations:
-            description: 'Loki holds Santa lines (job santa, item 501) from {{ $labels.instance }} within the last 6 hours but none in the last hour; shockwave runs programs every few seconds, so silence means Santa stopped, lost Full Disk Access, was turned off, or Alloy''s santa tail stopped. HostStoppedLogging covers Alloy as a whole. quicksilver is excluded (a laptop that sleeps). On the Mac: santactl status; systemextensionsctl list | grep -i santa; ls -l /var/db/santa/santa.log; then Alloy''s log for the loki.source.file santa component. Clears when lines resume.'
-            summary: '{{ $labels.instance }}: Santa has sent no events for over an hour'
-          labels:
-            area: security
-            severity: warning
-          isPaused: false
-    - orgId: 2
-      name: os-audit
-      folder: Security
-      interval: 1m
-      rules:
-        - uid: os-audit-auth-failure
-          title: OSAuthFailure
-          condition: C
-          data:
-            - refId: A
-              queryType: instant
-              relativeTimeRange:
-                from: 900
-                to: 0
-              datasourceUid: cefqyqv6j9c00e
-              model:
-                editorMode: code
-                expr: sum by (instance) (count_over_time({filename="/var/log/audit.log"} |~ `^header,[0-9]+,[0-9]+,AUE_(openssh|sudo|su|login),` |= `,return,failure` [15m])) or sum by (instance) (count_over_time({transport="audit"} |~ `^AUDIT11(00|12) ` |= `res=failed` [15m]))
-                intervalMs: 1000
-                maxDataPoints: 43200
-                queryType: instant
-                refId: A
-            - refId: B
-              datasourceUid: __expr__
-              model:
-                expression: A
-                intervalMs: 1000
-                maxDataPoints: 43200
-                reducer: last
-                refId: B
-                settings:
-                    mode: dropNN
-                type: reduce
-            - refId: C
-              datasourceUid: __expr__
-              model:
-                conditions:
-                    - evaluator:
-                        params:
-                            - 0
-                        type: gt
-                expression: B
-                intervalMs: 1000
-                maxDataPoints: 43200
-                refId: C
-                type: threshold
-          noDataState: OK
-          execErrState: Error
-          annotations:
-            description: 'Item 499. A failed SSH, sudo, su or login authentication on {{ $labels.instance }} in the last 15 minutes. FreeBSD source: /var/log/audit.log (praudit of /dev/auditpipe), events AUE_openssh, AUE_sudo, AUE_su and AUE_login ending return,failure. Fedora source: the journal''s audit transport, USER_AUTH (AUDIT1100) and USER_LOGIN (AUDIT1112) with res=failed. The 7-day soak to 2026-11-19 saw none on FreeBSD and 7 lines on Fedora, all from the Ansible control node (a wrong account or key). Read the lines in Explore (loki): {filename="/var/log/audit.log", instance="{{ $labels.instance }}"} |= "return,failure" or {transport="audit", instance="{{ $labels.instance }}"} |= "res=failed"; check the source address, then the host''s auth.log. CybrisSSHAuthFailure also covers persephone''s sshd from all.log.'
-            summary: '{{ $labels.instance }}: authentication failure in the OS audit trail in the last 15 minutes'
-          labels:
-            area: security
-            severity: warning
-          isPaused: false
-        - uid: os-audit-login-unexpected-src
-          title: OSLoginFromUnexpectedSource
-          condition: C
-          data:
-            - refId: A
-              queryType: instant
-              relativeTimeRange:
-                from: 900
-                to: 0
-              datasourceUid: cefqyqv6j9c00e
-              model:
-                editorMode: code
-                expr: sum by (instance, src) (count_over_time({filename="/var/log/audit.log"} |~ `^header,[0-9]+,[0-9]+,AUE_openssh,` |= `,return,success` | regexp `,(?P<src>[0-9.]+|[0-9a-f]*:[0-9a-f:]+),text,` | src != "" | src !~ `10\.0\.1\.[0-9]+|100\.(6[4-9]|[7-9][0-9]|1[01][0-9]|12[0-7])\.[0-9]+\.[0-9]+|fd7a:115c:a1e0:.*|127\.0\.0\.1|::1` [15m])) or sum by (instance, src) (count_over_time({transport="audit"} |~ `^AUDIT1112 ` |= `res=success` | regexp `addr=(?P<src>[^ ]+)` | src != "" | src != "?" | src !~ `10\.0\.1\.[0-9]+|100\.(6[4-9]|[7-9][0-9]|1[01][0-9]|12[0-7])\.[0-9]+\.[0-9]+|fd7a:115c:a1e0:.*|127\.0\.0\.1|::1` [15m]))
-                intervalMs: 1000
-                maxDataPoints: 43200
-                queryType: instant
-                refId: A
-            - refId: B
-              datasourceUid: __expr__
-              model:
-                expression: A
-                intervalMs: 1000
-                maxDataPoints: 43200
-                reducer: last
-                refId: B
-                settings:
-                    mode: dropNN
-                type: reduce
-            - refId: C
-              datasourceUid: __expr__
-              model:
-                conditions:
-                    - evaluator:
-                        params:
-                            - 0
-                        type: gt
-                expression: B
-                intervalMs: 1000
-                maxDataPoints: 43200
-                refId: C
-                type: threshold
-          noDataState: OK
-          execErrState: Error
-          annotations:
-            description: 'Item 499. A successful SSH login recorded in the OS audit trail came from an address outside the home network 10.0.1.0/24, the tailnet (100.64.0.0/10 and fd7a:115c:a1e0::/48) and loopback, in the last 15 minutes. No host takes SSH from the internet (persephone has no public SSH), so treat this as a possible compromise until it is explained. FreeBSD: AUE_openssh ending return,success; Fedora: USER_LOGIN (AUDIT1112) with res=success. Soak to 2026-11-19: 0. Read the line in Explore (loki): {instance="{{ $labels.instance }}"} |= "{{ $labels.src }}". When a new trusted network is added, widen the address pattern in this rule.'
-            summary: '{{ $labels.instance }}: login from unexpected address {{ $labels.src }}'
-          labels:
-            area: security
-            severity: critical
-          isPaused: false
-        - uid: os-audit-freebsd-modload
-          title: FreeBSDKernelModuleLoaded
-          condition: C
-          data:
-            - refId: A
-              queryType: instant
-              relativeTimeRange:
-                from: 900
-                to: 0
-              datasourceUid: cefqyqv6j9c00e
-              model:
-                editorMode: code
-                expr: sum by (instance, user) (count_over_time({filename="/var/log/audit.log"} |~ `^header,[0-9]+,[0-9]+,AUE_MODLOAD,` |= `,return,success` !~ `,subject(_ex)?,-1,` | regexp `,subject(_ex)?,(?P<user>[^,]+),` [15m]))
-                intervalMs: 1000
-                maxDataPoints: 43200
-                queryType: instant
-                refId: A
-            - refId: B
-              datasourceUid: __expr__
-              model:
-                expression: A
-                intervalMs: 1000
-                maxDataPoints: 43200
-                reducer: last
-                refId: B
-                settings:
-                    mode: dropNN
-                type: reduce
-            - refId: C
-              datasourceUid: __expr__
-              model:
-                conditions:
-                    - evaluator:
-                        params:
-                            - 0
-                        type: gt
-                expression: B
-                intervalMs: 1000
-                maxDataPoints: 43200
-                refId: C
-                type: threshold
-          noDataState: OK
-          execErrState: Error
-          annotations:
-            description: 'Item 499. AUE_MODLOAD ending return,success from a login session (audit user {{ $labels.user }}) in the last 15 minutes. Loads at boot or from rc scripts are non-attributable (audit ID -1) and excluded, as are failed loads. An Ansible apply that loads a module fires this under the automation account. Soak to 2026-11-19: 0 (the only attributable loads were failures). Read the line in Explore (loki): {filename="/var/log/audit.log", instance="{{ $labels.instance }}"} |= "AUE_MODLOAD"; then kldstat on the host.'
-            summary: '{{ $labels.instance }}: kernel module loaded by {{ $labels.user }}'
-          labels:
-            area: security
-            severity: warning
-          isPaused: false
-        - uid: os-audit-fedora-etc-write
-          title: FedoraEtcWriteByPerson
-          condition: C
-          data:
-            - refId: A
-              queryType: instant
-              relativeTimeRange:
-                from: 900
-                to: 0
-              datasourceUid: cefqyqv6j9c00e
-              model:
-                editorMode: code
-                expr: sum by (instance, auid, exe) (count_over_time({transport="audit"} |~ `^SYSCALL ` |= `key="etc_write"` | regexp `auid=(?P<auid>[0-9]+) .*exe="(?P<exe>[^"]+)"` | auid != "" | auid != "4294967295" | auid != "450" [15m]))
-                intervalMs: 1000
-                maxDataPoints: 43200
-                queryType: instant
-                refId: A
-            - refId: B
-              datasourceUid: __expr__
-              model:
-                expression: A
-                intervalMs: 1000
-                maxDataPoints: 43200
-                reducer: last
-                refId: B
-                settings:
-                    mode: dropNN
-                type: reduce
-            - refId: C
-              datasourceUid: __expr__
-              model:
-                conditions:
-                    - evaluator:
-                        params:
-                            - 0
-                        type: gt
-                expression: B
-                intervalMs: 1000
-                maxDataPoints: 43200
-                refId: C
-                type: threshold
-          noDataState: OK
-          execErrState: Error
-          annotations:
-            description: 'Item 499. The Fedora audit rule -w /etc -p wa (key etc_write) recorded a write or attribute change from a login session other than the automation account (audit ID 450) in the last 15 minutes. Writes by system services (audit ID unset) are excluded. Soak to 2026-11-19: 0. FreeBSD has no path watch; /etc there is item 543. Read the record in Explore (loki): {transport="audit", instance="{{ $labels.instance }}"} |= "etc_write", then the PATH lines with the same serial.'
-            summary: '{{ $labels.instance }}: {{ $labels.exe }} wrote under /etc as audit ID {{ $labels.auid }}'
-          labels:
-            area: security
-            severity: warning
-          isPaused: false
-        - uid: os-audit-stream-silent
-          title: OSAuditStreamSilent
-          condition: C
-          data:
-            - refId: A
-              queryType: instant
-              relativeTimeRange:
-                from: 21600
-                to: 0
-              datasourceUid: cefqyqv6j9c00e
-              model:
-                editorMode: code
-                expr: ((sum by (instance) (count_over_time({filename="/var/log/audit.log", instance!~`(imgtest|fedtest)\.sleem\.net`}[6h])) > 0) unless (sum by (instance) (count_over_time({filename="/var/log/audit.log", instance!~`(imgtest|fedtest)\.sleem\.net`}[30m])) > 0)) or ((sum by (instance) (count_over_time({transport="audit", instance!~`(imgtest|fedtest)\.sleem\.net`}[6h])) > 0) unless (sum by (instance) (count_over_time({transport="audit", instance!~`(imgtest|fedtest)\.sleem\.net`}[30m])) > 0))
-                intervalMs: 1000
-                maxDataPoints: 43200
-                queryType: instant
-                refId: A
-            - refId: B
-              datasourceUid: __expr__
-              model:
-                expression: A
-                intervalMs: 1000
-                maxDataPoints: 43200
-                reducer: last
-                refId: B
-                settings:
-                    mode: dropNN
-                type: reduce
-            - refId: C
-              datasourceUid: __expr__
-              model:
-                conditions:
-                    - evaluator:
-                        params:
-                            - 0
-                        type: gt
-                expression: B
-                intervalMs: 1000
-                maxDataPoints: 43200
-                refId: C
-                type: threshold
-          noDataState: OK
-          execErrState: Error
-          for: 10m
-          annotations:
-            description: 'Item 499. Loki holds audit lines from {{ $labels.instance }} within the last 6 hours but none in the last 30 minutes. Every host writes several a minute (cron''s audit-state check on FreeBSD; service and session records on Fedora); the soak to 2026-11-19 never saw fewer than 20 FreeBSD or 5 Fedora lines in 30 minutes. FreeBSD causes: auditd or audit_text stopped (monit restarts each up to three times, then unmonitors it), /var/log/audit.log lost its root:logread mode, or someone ran audit -t or stopped auditd. Fedora causes: auditd or systemd-journald-audit.socket stopped, or the audit rules were cleared. HostStoppedLogging covers Alloy as a whole. On FreeBSD: sudo service auditd status; sudo service audit_text status; sudo monit summary; ls -l /var/log/audit.log. On Fedora: sudo systemctl status auditd systemd-journald-audit.socket; sudo auditctl -s. The bootstrap rehearsal''s scratch guests imgtest and fedtest (item 483) are excluded. Clears when lines resume.'
-            summary: '{{ $labels.instance }}: the OS audit trail has sent nothing for 30 minutes'
-          labels:
-            area: security
             severity: warning
           isPaused: false
