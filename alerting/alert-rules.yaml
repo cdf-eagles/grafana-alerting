@@ -6628,3 +6628,259 @@ groups:
             area: security
             severity: warning
           isPaused: false
+    - orgId: 2
+      name: os-audit
+      folder: Security
+      interval: 1m
+      rules:
+        - uid: os-audit-auth-failure
+          title: OSAuthFailure
+          condition: C
+          data:
+            - refId: A
+              queryType: instant
+              relativeTimeRange:
+                from: 900
+                to: 0
+              datasourceUid: cefqyqv6j9c00e
+              model:
+                editorMode: code
+                expr: sum by (instance) (count_over_time({filename="/var/log/audit.log"} |~ `^header,[0-9]+,[0-9]+,AUE_(openssh|sudo|su|login),` |= `,return,failure` [15m])) or sum by (instance) (count_over_time({transport="audit"} |~ `^AUDIT11(00|12) ` |= `res=failed` [15m]))
+                intervalMs: 1000
+                maxDataPoints: 43200
+                queryType: instant
+                refId: A
+            - refId: B
+              datasourceUid: __expr__
+              model:
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                reducer: last
+                refId: B
+                settings:
+                    mode: dropNN
+                type: reduce
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                expression: B
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          annotations:
+            description: 'Item 499. A failed SSH, sudo, su or login authentication on {{ $labels.instance }} in the last 15 minutes. FreeBSD source: /var/log/audit.log (praudit of /dev/auditpipe), events AUE_openssh, AUE_sudo, AUE_su and AUE_login ending return,failure. Fedora source: the journal''s audit transport, USER_AUTH (AUDIT1100) and USER_LOGIN (AUDIT1112) with res=failed. The 7-day soak to 2026-11-19 saw none on FreeBSD and 7 lines on Fedora, all from the Ansible control node (a wrong account or key). Read the lines in Explore (loki): {filename="/var/log/audit.log", instance="{{ $labels.instance }}"} |= "return,failure" or {transport="audit", instance="{{ $labels.instance }}"} |= "res=failed"; check the source address, then the host''s auth.log. CybrisSSHAuthFailure also covers persephone''s sshd from all.log.'
+            summary: '{{ $labels.instance }}: authentication failure in the OS audit trail in the last 15 minutes'
+          labels:
+            area: security
+            severity: warning
+          isPaused: false
+        - uid: os-audit-login-unexpected-src
+          title: OSLoginFromUnexpectedSource
+          condition: C
+          data:
+            - refId: A
+              queryType: instant
+              relativeTimeRange:
+                from: 900
+                to: 0
+              datasourceUid: cefqyqv6j9c00e
+              model:
+                editorMode: code
+                expr: sum by (instance, src) (count_over_time({filename="/var/log/audit.log"} |~ `^header,[0-9]+,[0-9]+,AUE_openssh,` |= `,return,success` | regexp `,(?P<src>[0-9.]+|[0-9a-f]*:[0-9a-f:]+),text,` | src != "" | src !~ `10\.0\.1\.[0-9]+|100\.(6[4-9]|[7-9][0-9]|1[01][0-9]|12[0-7])\.[0-9]+\.[0-9]+|fd7a:115c:a1e0:.*|127\.0\.0\.1|::1` [15m])) or sum by (instance, src) (count_over_time({transport="audit"} |~ `^AUDIT1112 ` |= `res=success` | regexp `addr=(?P<src>[^ ]+)` | src != "" | src != "?" | src !~ `10\.0\.1\.[0-9]+|100\.(6[4-9]|[7-9][0-9]|1[01][0-9]|12[0-7])\.[0-9]+\.[0-9]+|fd7a:115c:a1e0:.*|127\.0\.0\.1|::1` [15m]))
+                intervalMs: 1000
+                maxDataPoints: 43200
+                queryType: instant
+                refId: A
+            - refId: B
+              datasourceUid: __expr__
+              model:
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                reducer: last
+                refId: B
+                settings:
+                    mode: dropNN
+                type: reduce
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                expression: B
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          annotations:
+            description: 'Item 499. A successful SSH login recorded in the OS audit trail came from an address outside the home network 10.0.1.0/24, the tailnet (100.64.0.0/10 and fd7a:115c:a1e0::/48) and loopback, in the last 15 minutes. No host takes SSH from the internet (persephone has no public SSH), so treat this as a possible compromise until it is explained. FreeBSD: AUE_openssh ending return,success; Fedora: USER_LOGIN (AUDIT1112) with res=success. Soak to 2026-11-19: 0. Read the line in Explore (loki): {instance="{{ $labels.instance }}"} |= "{{ $labels.src }}". When a new trusted network is added, widen the address pattern in this rule.'
+            summary: '{{ $labels.instance }}: login from unexpected address {{ $labels.src }}'
+          labels:
+            area: security
+            severity: critical
+          isPaused: false
+        - uid: os-audit-freebsd-modload
+          title: FreeBSDKernelModuleLoaded
+          condition: C
+          data:
+            - refId: A
+              queryType: instant
+              relativeTimeRange:
+                from: 900
+                to: 0
+              datasourceUid: cefqyqv6j9c00e
+              model:
+                editorMode: code
+                expr: sum by (instance, user) (count_over_time({filename="/var/log/audit.log"} |~ `^header,[0-9]+,[0-9]+,AUE_MODLOAD,` |= `,return,success` !~ `,subject(_ex)?,-1,` | regexp `,subject(_ex)?,(?P<user>[^,]+),` [15m]))
+                intervalMs: 1000
+                maxDataPoints: 43200
+                queryType: instant
+                refId: A
+            - refId: B
+              datasourceUid: __expr__
+              model:
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                reducer: last
+                refId: B
+                settings:
+                    mode: dropNN
+                type: reduce
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                expression: B
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          annotations:
+            description: 'Item 499. AUE_MODLOAD ending return,success from a login session (audit user {{ $labels.user }}) in the last 15 minutes. Loads at boot or from rc scripts are non-attributable (audit ID -1) and excluded, as are failed loads. An Ansible apply that loads a module fires this under the automation account. Soak to 2026-11-19: 0 (the only attributable loads were failures). Read the line in Explore (loki): {filename="/var/log/audit.log", instance="{{ $labels.instance }}"} |= "AUE_MODLOAD"; then kldstat on the host.'
+            summary: '{{ $labels.instance }}: kernel module loaded by {{ $labels.user }}'
+          labels:
+            area: security
+            severity: warning
+          isPaused: false
+        - uid: os-audit-fedora-etc-write
+          title: FedoraEtcWriteByPerson
+          condition: C
+          data:
+            - refId: A
+              queryType: instant
+              relativeTimeRange:
+                from: 900
+                to: 0
+              datasourceUid: cefqyqv6j9c00e
+              model:
+                editorMode: code
+                expr: sum by (instance, auid, exe) (count_over_time({transport="audit"} |~ `^SYSCALL ` |= `key="etc_write"` | regexp `auid=(?P<auid>[0-9]+) .*exe="(?P<exe>[^"]+)"` | auid != "" | auid != "4294967295" | auid != "450" [15m]))
+                intervalMs: 1000
+                maxDataPoints: 43200
+                queryType: instant
+                refId: A
+            - refId: B
+              datasourceUid: __expr__
+              model:
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                reducer: last
+                refId: B
+                settings:
+                    mode: dropNN
+                type: reduce
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                expression: B
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          annotations:
+            description: 'Item 499. The Fedora audit rule -w /etc -p wa (key etc_write) recorded a write or attribute change from a login session other than the automation account (audit ID 450) in the last 15 minutes. Writes by system services (audit ID unset) are excluded. Soak to 2026-11-19: 0. FreeBSD has no path watch; /etc there is item 543. Read the record in Explore (loki): {transport="audit", instance="{{ $labels.instance }}"} |= "etc_write", then the PATH lines with the same serial.'
+            summary: '{{ $labels.instance }}: {{ $labels.exe }} wrote under /etc as audit ID {{ $labels.auid }}'
+          labels:
+            area: security
+            severity: warning
+          isPaused: false
+        - uid: os-audit-stream-silent
+          title: OSAuditStreamSilent
+          condition: C
+          data:
+            - refId: A
+              queryType: instant
+              relativeTimeRange:
+                from: 21600
+                to: 0
+              datasourceUid: cefqyqv6j9c00e
+              model:
+                editorMode: code
+                expr: ((sum by (instance) (count_over_time({filename="/var/log/audit.log", instance!~`(imgtest|fedtest)\.sleem\.net`}[6h])) > 0) unless (sum by (instance) (count_over_time({filename="/var/log/audit.log", instance!~`(imgtest|fedtest)\.sleem\.net`}[30m])) > 0)) or ((sum by (instance) (count_over_time({transport="audit", instance!~`(imgtest|fedtest)\.sleem\.net`}[6h])) > 0) unless (sum by (instance) (count_over_time({transport="audit", instance!~`(imgtest|fedtest)\.sleem\.net`}[30m])) > 0))
+                intervalMs: 1000
+                maxDataPoints: 43200
+                queryType: instant
+                refId: A
+            - refId: B
+              datasourceUid: __expr__
+              model:
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                reducer: last
+                refId: B
+                settings:
+                    mode: dropNN
+                type: reduce
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                expression: B
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          for: 10m
+          annotations:
+            description: 'Item 499. Loki holds audit lines from {{ $labels.instance }} within the last 6 hours but none in the last 30 minutes. Every host writes several a minute (cron''s audit-state check on FreeBSD; service and session records on Fedora); the soak to 2026-11-19 never saw fewer than 20 FreeBSD or 5 Fedora lines in 30 minutes. FreeBSD causes: auditd or audit_text stopped (monit restarts each up to three times, then unmonitors it), /var/log/audit.log lost its root:logread mode, or someone ran audit -t or stopped auditd. Fedora causes: auditd or systemd-journald-audit.socket stopped, or the audit rules were cleared. HostStoppedLogging covers Alloy as a whole. On FreeBSD: sudo service auditd status; sudo service audit_text status; sudo monit summary; ls -l /var/log/audit.log. On Fedora: sudo systemctl status auditd systemd-journald-audit.socket; sudo auditctl -s. The bootstrap rehearsal''s scratch guests imgtest and fedtest (item 483) are excluded. Clears when lines resume.'
+            summary: '{{ $labels.instance }}: the OS audit trail has sent nothing for 30 minutes'
+          labels:
+            area: security
+            severity: warning
+          isPaused: false
