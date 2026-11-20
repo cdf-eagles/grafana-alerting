@@ -334,7 +334,7 @@ groups:
               datasourceUid: cei7lwvco16o0b
               model:
                 editorMode: code
-                expr: probe_success{job=~"blackbox_(http|tls|ldaps|healthchecks|ftp)", instance!="https://vault.sleem.net/v1/sys/health"} == 0
+                expr: probe_success{job=~"blackbox_(http|tls|ldaps|healthchecks|ftp|ssh)", instance!="https://vault.sleem.net/v1/sys/health"} == 0
                 instant: true
                 intervalMs: 1000
                 maxDataPoints: 43200
@@ -364,7 +364,7 @@ groups:
           execErrState: Error
           for: 5m
           annotations:
-            description: 'probe_success has been 0 for 5 minutes for {{ $labels.instance }} in job {{ $labels.job }}. blackbox_tls: the TLS handshake or certificate chain failed (expired, wrong name, or the vhost is gone), not only expiry. blackbox_http: the page did not return its expected status. blackbox_ldaps: LDAPS on ldap or ldap02 refused. blackbox_healthchecks: a Mimir, Loki, Tempo, unpoller or exportarr /metrics endpoint on podman01 is down. blackbox_ftp: Silo''s FTP server on podman01 did not send its 220 greeting or its 221 reply to QUIT, so gs-silo is down or the published port 21 accepts with nothing behind it; the Netatmo cameras cannot upload (item 448). Read the failure in Explore (mimir): probe_failed_due_to_regex, probe_http_status_code and probe_ssl_last_chain_info for the same instance, then curl -vk the target from podman01 (for blackbox_ftp: nc 10.0.1.231 21). The vault health probe is excluded here; OpenBaoSealedOrDown owns it. A probe whose series vanished is ScrapeTargetVanished''s job.'
+            description: 'probe_success has been 0 for 5 minutes for {{ $labels.instance }} in job {{ $labels.job }}. blackbox_tls: the TLS handshake or certificate chain failed (expired, wrong name, or the vhost is gone), not only expiry. blackbox_http: the page did not return its expected status. blackbox_ldaps: LDAPS on ldap or ldap02 refused. blackbox_healthchecks: a Mimir, Loki, Tempo, unpoller or exportarr /metrics endpoint on podman01 is down. blackbox_ftp: Silo''s FTP server on podman01 did not send its 220 greeting or its 221 reply to QUIT, so gs-silo is down or the published port 21 accepts with nothing behind it; the Netatmo cameras cannot upload (item 448). blackbox_ssh: sshd on a FreeBSD host did not send its SSH-2.0 banner within 5 seconds, so sshd or the host is down; the probe sends its own identification line so sshd does not report it to blocklistd (item 532). Read the failure in Explore (mimir): probe_failed_due_to_regex, probe_http_status_code and probe_ssl_last_chain_info for the same instance, then curl -vk the target from podman01 (for blackbox_ftp: nc 10.0.1.231 21; for blackbox_ssh: nc <host> 22). The vault health probe is excluded here; OpenBaoSealedOrDown owns it. A probe whose series vanished is ScrapeTargetVanished''s job.'
             summary: Blackbox probe of {{ $labels.instance }} ({{ $labels.job }}) is failing
           labels:
             severity: warning
