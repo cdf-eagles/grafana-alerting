@@ -3178,7 +3178,7 @@ groups:
               datasourceUid: cefqyqv6j9c00e
               model:
                 editorMode: code
-                expr: sum by (instance, path) (count_over_time({job="santa"} |= "action=EXEC" | regexp `\|path=(?P<path>[^|]*)` | path =~ `^(/private)?/tmp/.*|^/private/var/folders/.*|^/Users/[^/]+/Downloads/.*|^/Volumes/.*` [15m]))
+                expr: sum by (instance, path) (count_over_time({job="santa"} |= "action=EXEC" | regexp `\|path=(?P<path>[^|]*)` | path =~ `^(/private)?/tmp/.*|^/private/var/folders/.*|^/Users/[^/]+/Downloads/.*|^/Volumes/.*` | path !~ `^/private/var/folders/[0-9a-z_]{2}/[0-9a-z_]+/T/tmp\.[A-Za-z0-9]{10}/venv[^/]*/bin/shellcheck|^/private/var/folders/[0-9a-z_]{2}/[0-9a-z_]+/T/go-build[0-9]+/b[0-9]{3}/([A-Za-z0-9_-]+\.test|exe/[A-Za-z0-9_-]+)` [15m]))
                 intervalMs: 1000
                 maxDataPoints: 43200
                 queryType: instant
@@ -3210,7 +3210,7 @@ groups:
           noDataState: OK
           execErrState: Error
           annotations:
-            description: 'Santa (item 501) logged an execution from /tmp, /private/var/folders, a Downloads folder or a mounted volume in the last 15 minutes. Source: /var/db/santa/santa.log (job santa). Read the line, its parent (ppid) and its arguments in Explore (loki): {job="santa", instance="{{ $labels.instance }}"} |= "path={{ $labels.path }}". Installers under /private/var/folders and Homebrew builds under /private/tmp are expected; the soak adds exclusions for them.'
+            description: 'Santa (item 501) logged an execution from /tmp, /private/var/folders, a Downloads folder or a mounted volume in the last 15 minutes, signed or not (unsigned runs here alert only from this rule). Source: /var/db/santa/santa.log (job santa). Excluded by narrow pattern (accepted 2026-11-20; a dropped binary with these names in these folder shapes is trusted): shellcheck from shellcheck-py virtual environments in mktemp folders ($TMPDIR/tmp.<10 chars>/venv*/bin/shellcheck), and go test and go run binaries ($TMPDIR/go-build<n>/b<nnn>/*.test or exe/<name>). Read the line, its parent (ppid) and its arguments in Explore (loki): {job="santa", instance="{{ $labels.instance }}"} |= "path={{ $labels.path }}".'
             summary: '{{ $labels.instance }}: a program ran from a temporary or download location: {{ $labels.path }}'
           labels:
             area: security
@@ -3228,7 +3228,7 @@ groups:
               datasourceUid: cefqyqv6j9c00e
               model:
                 editorMode: code
-                expr: sum by (instance, path) (count_over_time({job="santa"} |= "action=EXEC" !~ `\|cert_cn=` | regexp `\|path=(?P<path>[^|]*)` | path !~ `^/opt/homebrew/.*|^/Users/haides/Applications/VaultSnapshot\.app/Contents/MacOS/applet|^/Users/haides/\.cache/pre-commit/repo[a-z0-9_]{8}/(rustenv-default|golangenv-[^/]+)/bin/(ripsecrets|gitleaks|actionlint|golangci-lint)` [15m]))
+                expr: sum by (instance, path) (count_over_time({job="santa"} |= "action=EXEC" != "|decision=UNKNOWN|" !~ `\|cert_cn=` | regexp `\|path=(?P<path>[^|]*)` | path !~ `^/opt/homebrew/.*|^/Users/haides/Applications/VaultSnapshot\.app/Contents/MacOS/applet|^/Users/haides/\.cache/pre-commit/repo[a-z0-9_]{8}/(rustenv-default|golangenv-[^/]+)/bin/(ripsecrets|gitleaks|actionlint|golangci-lint)|^(/private)?/tmp/.*|^/private/var/folders/.*|^/Users/[^/]+/Downloads/.*|^/Volumes/.*|^/Applications/MakeMKV\.app/Contents/MacOS/(makemkv|makemkvcon|mmgplsrv)|^/Users/haides/Library/Application Support/Claude/Claude Extensions/ant\.dir\.gh\.grafana\.grafana-mcp/server/darwin/mcp-grafana|^/Users/haides/src/personal/mcp-allowlist-proxy/bin/mcp-allowlist-proxy|^/Users/haides/src/personal/.+/\.terraform/providers/registry\.opentofu\.org/hashicorp/[a-z0-9-]+/[0-9.]+/darwin_arm64/terraform-provider-[a-z0-9-]+|^/Users/haides/\.tflint\.d/plugins/github\.com/terraform-linters/tflint-ruleset-aws/[0-9.]+/tflint-ruleset-aws|^/Users/haides/Library/Caches/go-build/[0-9a-f]{2}/[0-9a-f]{64}-d/[A-Za-z0-9_-]+|^/Users/haides/Library/Mobile Documents/com~apple~Automator/Documents/Brave-Incognito\.app/Contents/MacOS/Automator Application Stub|^/Users/haides/Library/Application Support/open-webui/(python/bin/(python3\.12|uv)|llama\.cpp/b[0-9]+/llama-b[0-9]+/llama-server)` [15m]))
                 intervalMs: 1000
                 maxDataPoints: 43200
                 queryType: instant
@@ -3260,7 +3260,7 @@ groups:
           noDataState: OK
           execErrState: Error
           annotations:
-            description: 'Santa (item 501) logged an execution with no signing certificate (no cert_cn field: unsigned or ad hoc signed) outside /opt/homebrew in the last 15 minutes. Apple''s own binaries always carry cert_cn, even when they have no teamid, so they never match. Excluded by exact path: shockwave''s own ad hoc signed ~/Applications/VaultSnapshot.app applet. Excluded by pattern (2026-11-13): pre-commit''s locally built hook binaries ripsecrets, gitleaks, actionlint and golangci-lint under ~/.cache/pre-commit/repo<8 chars>/(rustenv-default|golangenv-*)/bin/, which are ad hoc linker signed and change hash and folder on every hook rev bump. Read the line in Explore (loki): {job="santa", instance="{{ $labels.instance }}"} |= "path={{ $labels.path }}". Self-built tools are expected here until the soak adds their paths.'
+            description: 'Santa (item 501) logged an evaluated execution (decision not UNKNOWN) with no signing certificate (no cert_cn field: unsigned or ad hoc signed) in the last 15 minutes. Apple''s own binaries carry cert_cn, even when they have no teamid. Temporary and download locations (/tmp, /private/var/folders, ~/Downloads, /Volumes) are left to SantaExecutionFromTempLocation so a run there alerts once. Excluded (stable unsigned paths, all writable by haides; accepted 2026-11-13 and 2026-11-20): /opt/homebrew; ~/Applications/VaultSnapshot.app applet; pre-commit''s locally built ripsecrets, gitleaks, actionlint and golangci-lint; /Applications/MakeMKV.app; the Grafana MCP Claude extension; ~/src/personal/mcp-allowlist-proxy/bin; OpenTofu hashicorp providers under ~/src/personal/*/.terraform; the tflint AWS ruleset plugin; go run binaries in ~/Library/Caches/go-build; the Brave-Incognito Automator stub; open-webui''s bundled python3.12, uv and llama-server. Read the line in Explore (loki): {job="santa", instance="{{ $labels.instance }}"} |= "path={{ $labels.path }}".'
             summary: '{{ $labels.instance }}: an unsigned or ad hoc signed program ran outside Homebrew: {{ $labels.path }}'
           labels:
             area: security
