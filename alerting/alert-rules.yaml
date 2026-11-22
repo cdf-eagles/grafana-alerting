@@ -6357,6 +6357,178 @@ groups:
           notification_settings:
             receiver: NTFY
     - orgId: 2
+      name: versions
+      folder: Alert Rules
+      interval: 1m
+      rules:
+        - uid: ag50ktc0fqygwc
+          title: PinSecurityUpdate
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: cei7lwvco16o0b
+              model:
+                editorMode: code
+                expr: count by (pin, current, latest, reason) (pin_watch_update_info{grade="security"})
+                instant: true
+                intervalMs: 1000
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          annotations:
+            description: 'pin-watch on soundwave graded this pinned runtime version security: the notes of a newer release name a CVE, a GHSA or a security section (security-notes), or its release line is past end of life (eol-passed). Open a backlog item today and bump it as item 625 did. Release links: the Pinned Runtime Versions dashboard, or /var/db/pin-watch/report.json on soundwave. A silence on this pin acknowledges it.'
+            summary: '{{ $labels.pin }} {{ $labels.current }} -> {{ $labels.latest }} is a security update ({{ $labels.reason }})'
+          labels:
+            severity: warning
+          isPaused: false
+          notification_settings:
+            receiver: NTFY
+        - uid: eg50ku2yqb1tsf
+          title: PinWatchStale
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: cei7lwvco16o0b
+              model:
+                editorMode: code
+                expr: time() - pin_watch_last_run_timestamp_seconds
+                instant: true
+                intervalMs: 1000
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 691200
+                        type: gt
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: Alerting
+          execErrState: Error
+          for: 1h
+          annotations:
+            description: The weekly pin-watch job on soundwave (cron.d Saturdays 06:45, /usr/local/bin/pin-watch.py) has not updated pin_watch_last_run_timestamp_seconds for {{ humanizeDuration $values.A.Value }}, against an 8-day (691200 s) limit, so every pin_watch_* gauge and the Pinned Runtime Versions dashboard are stale. Check the cron entry (grep pin-watch /var/log/all.log on soundwave), that node_exporter on soundwave is scraped, and that /var/tmp/node_exporter/pin_watch.prom exists; then run sudo /usr/local/bin/pin-watch.py by hand. No data means the metric is missing entirely and is treated as alerting.
+            summary: pin-watch has not reported for over 8 days
+          labels:
+            severity: warning
+          isPaused: false
+          notification_settings:
+            receiver: NTFY-default
+        - uid: eg50kudhlwlxcd
+          title: PinWatchLookupErrors
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: cei7lwvco16o0b
+              model:
+                editorMode: code
+                expr: max(pin_watch_errors)
+                instant: true
+                intervalMs: 1000
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          for: 7d1h
+          annotations:
+            description: 'pin_watch_errors has been above 0 for 7 days and an hour, so at least two weekly runs of pin-watch on soundwave failed an upstream or Prometheus lookup and those pins are not being graded. The Pinned Runtime Versions dashboard''s All pins table shows which pins failed (Lookup: failed); grep pin-watch /var/log/all.log on soundwave for the error (a renamed repository or image, GitHub''s unauthenticated rate limit, or Prometheus unreachable).'
+            summary: pin-watch lookups failed on two runs ({{ $values.A.Value }} in the last)
+          labels:
+            severity: warning
+          isPaused: false
+          notification_settings:
+            receiver: NTFY-default
+        - uid: eg50kuu4q1vk0e
+          title: PinUpdatesWaiting
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: cei7lwvco16o0b
+              model:
+                editorMode: code
+                expr: count by (pin) (pin_watch_update_info{grade=~"recommended|review|plan"})
+                instant: true
+                intervalMs: 1000
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          for: 1w
+          annotations:
+            description: pin-watch on soundwave has graded this pinned runtime version recommended (a patch release at least 3 days old), review (a minor release at least 14 days old) or plan (a major release, breaking-change notes, a hand-bump pin, or an end of life within 183 days) for 7 days. The Pinned Runtime Versions dashboard shows the grade and links the release notes. Open a backlog item for the bump, or silence this pin to acknowledge it. One grouped message a week.
+            summary: '{{ $labels.pin }} has had an update waiting for 7 days'
+          labels:
+            severity: info
+          isPaused: false
+          notification_settings:
+            receiver: NTFY-default
+            group_by:
+                - alertname
+                - grafana_folder
+            repeat_interval: 1w
+    - orgId: 2
       name: zfs
       folder: Alert Rules
       interval: 1m
