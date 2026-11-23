@@ -2095,6 +2095,265 @@ groups:
             severity: warning
           isPaused: false
     - orgId: 2
+      name: cybris-services
+      folder: Alert Rules
+      interval: 1m
+      rules:
+        - uid: bg549lp75pji8e
+          title: CybrisServiceMetricsStale
+          condition: C
+          data:
+            - refId: A
+              queryType: instant
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: cei7lwvco16o0b
+              model:
+                expr: max by (instance) (1 - textfile_source_up{instance=~".+\\.cybris\\.net",source=~"bind|apache|php-fpm"}) + on(instance) max by (instance) (time() - node_textfile_mtime_seconds{instance=~".+\\.cybris\\.net",file=~".*/(bind|apache|php-fpm)\\.prom"} > bool 300)
+                instant: true
+                intervalMs: 1000
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: B
+              datasourceUid: __expr__
+              model:
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                reducer: last
+                refId: B
+                settings:
+                    mode: dropNN
+                type: reduce
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                expression: B
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          for: 5m
+          annotations:
+            description: 'Rule designed and built in backlog item 396. Source: textfile_source_up and node_textfile_mtime_seconds for bind.prom, apache.prom and php-fpm.prom (node_exporter textfile collector, cron.d writers every minute). Never fired in the 14 days before 2026-11-23.'
+            summary: '{{ $labels.instance }}: BIND, Apache or PHP-FPM textfile metrics down or older than 5 minutes'
+          labels:
+            area: service
+            severity: warning
+          isPaused: false
+        - uid: eg549lyrf7r40a
+          title: CybrisDNSQuerySpike
+          condition: C
+          data:
+            - refId: A
+              queryType: instant
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: cei7lwvco16o0b
+              model:
+                expr: sum by (instance) (rate(bind_incoming_queries_total{instance=~".+\\.cybris\\.net"}[5m]))
+                instant: true
+                intervalMs: 1000
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: B
+              datasourceUid: __expr__
+              model:
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                reducer: last
+                refId: B
+                settings:
+                    mode: dropNN
+                type: reduce
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 20
+                        type: gt
+                expression: B
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          for: 10m
+          annotations:
+            description: 'Rule designed and built in backlog item 396. Source: bind_incoming_queries_total (bind_exporter via the textfile collector). Baseline 14 days to 2026-11-23: median 1.2/s, 99th percentile 3.4/s, maximum 10.1/s.'
+            summary: '{{ $labels.instance }}: more than 20 DNS queries a second for 10 minutes'
+          labels:
+            area: service
+            severity: warning
+          isPaused: false
+        - uid: dg549m8rpkikga
+          title: CybrisDNSRefusedSpike
+          condition: C
+          data:
+            - refId: A
+              queryType: instant
+              relativeTimeRange:
+                from: 900
+                to: 0
+              datasourceUid: cei7lwvco16o0b
+              model:
+                expr: sum by (instance) (increase(bind_response_rcodes_total{instance=~".+\\.cybris\\.net",rcode="REFUSED"}[15m]))
+                instant: true
+                intervalMs: 1000
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: B
+              datasourceUid: __expr__
+              model:
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                reducer: last
+                refId: B
+                settings:
+                    mode: dropNN
+                type: reduce
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 300
+                        type: gt
+                expression: B
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          annotations:
+            description: 'Rule designed and built in backlog item 396. Source: bind_response_rcodes_total{rcode="REFUSED"}. Baseline 14 days to 2026-11-23: 99th percentile 34, maximum 77 per 15 minutes. Likely open-resolver or zone-transfer probing; CybrisZoneTransferRefused covers transfers per client from the logs.'
+            summary: '{{ $labels.instance }}: more than 300 REFUSED DNS answers in 15 minutes'
+          labels:
+            area: service
+            severity: warning
+          isPaused: false
+        - uid: bg549mjlypfcwb
+          title: CybrisApacheWorkersBusy
+          condition: C
+          data:
+            - refId: A
+              queryType: instant
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: cei7lwvco16o0b
+              model:
+                expr: sum by (instance) (apache_workers{instance=~".+\\.cybris\\.net",state="busy"}) / on(instance) max by (instance) (apache_scoreboard_slots{instance=~".+\\.cybris\\.net"})
+                instant: true
+                intervalMs: 1000
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: B
+              datasourceUid: __expr__
+              model:
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                reducer: last
+                refId: B
+                settings:
+                    mode: dropNN
+                type: reduce
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0.5
+                        type: gt
+                expression: B
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          for: 5m
+          annotations:
+            description: 'Rule designed and built in backlog item 396. Source: apache_workers{state="busy"} / apache_scoreboard_slots (mod_status via the textfile collector). Baseline 14 days to 2026-11-23: 1 to 2 busy of 400, maximum 26 (6.5%). 400 may be the scoreboard size rather than MaxRequestWorkers, hence 50%.'
+            summary: '{{ $labels.instance }}: more than half of Apache''s scoreboard slots busy for 5 minutes'
+          labels:
+            area: service
+            severity: warning
+          isPaused: false
+        - uid: eg549mt7enwu8f
+          title: CybrisPHPFPMSaturated
+          condition: C
+          data:
+            - refId: A
+              queryType: instant
+              relativeTimeRange:
+                from: 900
+                to: 0
+              datasourceUid: cei7lwvco16o0b
+              model:
+                expr: max by (instance) (increase(phpfpm_max_children_reached{instance=~".+\\.cybris\\.net"}[15m])) + on(instance) max by (instance) (phpfpm_listen_queue{instance=~".+\\.cybris\\.net"})
+                instant: true
+                intervalMs: 1000
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: B
+              datasourceUid: __expr__
+              model:
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                reducer: last
+                refId: B
+                settings:
+                    mode: dropNN
+                type: reduce
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                expression: B
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          for: 5m
+          annotations:
+            description: 'Rule designed and built in backlog item 396. Source: phpfpm_max_children_reached (increase over 15 minutes) plus phpfpm_listen_queue. Baseline 14 days to 2026-11-23: never reached, queue always 0, at most 1 of 5 children active.'
+            summary: '{{ $labels.instance }}: PHP-FPM pool hit max children or is queueing requests'
+          labels:
+            area: service
+            severity: warning
+          isPaused: false
+    - orgId: 2
       name: hardware
       folder: Alert Rules
       interval: 5m
@@ -6093,6 +6352,112 @@ groups:
           annotations:
             description: 'Item 499. Loki holds audit lines from {{ $labels.instance }} within the last 6 hours but none in the last 30 minutes. Every host writes several a minute (cron''s audit-state check on FreeBSD; service and session records on Fedora); the soak to 2026-11-19 never saw fewer than 20 FreeBSD or 5 Fedora lines in 30 minutes. FreeBSD causes: auditd or audit_text stopped (monit restarts each up to three times, then unmonitors it), /var/log/audit.log lost its root:logread mode, or someone ran audit -t or stopped auditd. Fedora causes: auditd or systemd-journald-audit.socket stopped, or the audit rules were cleared. HostStoppedLogging covers Alloy as a whole. On FreeBSD: sudo service auditd status; sudo service audit_text status; sudo monit summary; ls -l /var/log/audit.log. On Fedora: sudo systemctl status auditd systemd-journald-audit.socket; sudo auditctl -s. The bootstrap rehearsal''s scratch guests imgtest and fedtest (item 483) are excluded. Clears when lines resume.'
             summary: '{{ $labels.instance }}: the OS audit trail has sent nothing for 30 minutes'
+          labels:
+            area: security
+            severity: warning
+          isPaused: false
+    - orgId: 2
+      name: region-blocking
+      folder: Alert Rules
+      interval: 1m
+      rules:
+        - uid: region-block-outbound-sustained
+          title: RegionBlockOutboundSustained
+          condition: C
+          data:
+            - refId: A
+              queryType: instant
+              relativeTimeRange:
+                from: 3600
+                to: 0
+              datasourceUid: cefqyqv6j9c00e
+              model:
+                editorMode: code
+                expr: (sum by (src) (count_over_time({hostname="unifi-dm01"} |= `DESCR="Region Blocking (logged)` != `- Internal i` !~ `MAC=\S*4c:a3:8f:84:17:cd` | regexp `SRC=(?P<src>\S+) DST=` [1h])) > 300) or (sum by (src) (count_over_time({hostname="unifi-dm01"} |= `DESCR="Region Blocking (logged)` != `- Internal i` |~ `MAC=\S*4c:a3:8f:84:17:cd` | regexp `SRC=(?P<src>\S+) DST=` [1h])) > 1200)
+                intervalMs: 1000
+                maxDataPoints: 43200
+                queryType: instant
+                refId: A
+            - refId: B
+              datasourceUid: __expr__
+              model:
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                reducer: last
+                refId: B
+                settings:
+                    mode: dropNN
+                type: reduce
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                expression: B
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          for: 1h
+          annotations:
+            description: 'Item 510. unifi-dm01''s outbound region-blocking policies (DESCR "Region Blocking (logged)", "- Hotspot out", "- DMZ out"; matched on the DESCR text because rule numbers move) dropped more than 300 connections an hour from {{ $labels.src }}, sustained for an hour: a device beaconing to or stuck retrying a blocked country. The IoT camera MB Camera (MAC 4c:a3:8f:84:17:cd, Alibaba Cloud CN, expected and kept blocked) plateaus near 1,130 an hour and alerts only above 1,200. Baseline 2026-11-08 to 2026-11-23: one firing in 13 days (DMZ 10.0.40.23 to Apple 17.250, geolocated BR, 16 hours). Brazil and Hong Kong catch Apple, Meta and AWS Sao Paulo traffic, which is accepted (2026-11-23). Read the drops in Explore (loki): {hostname="unifi-dm01"} |= "Region Blocking" |= "SRC={{ $labels.src }} "; the CEF lines (|= "UNIFIsrcClientIp={{ $labels.src }}") name the client and the destination region.'
+            summary: '{{ $labels.src }}: over 300 region-blocked outbound drops an hour for an hour'
+          labels:
+            area: security
+            severity: warning
+          isPaused: false
+        - uid: region-block-inbound-surge
+          title: RegionBlockInboundSurge
+          condition: C
+          data:
+            - refId: A
+              queryType: instant
+              relativeTimeRange:
+                from: 3600
+                to: 0
+              datasourceUid: cefqyqv6j9c00e
+              model:
+                editorMode: code
+                expr: count(sum by (src) (count_over_time({hostname="unifi-dm01"} |= `DESCR="Region Blocking (logged) - Internal i` | regexp `SRC=(?P<src>\S+) DST=` [1h])))
+                intervalMs: 1000
+                maxDataPoints: 43200
+                queryType: instant
+                refId: A
+            - refId: B
+              datasourceUid: __expr__
+              model:
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                reducer: last
+                refId: B
+                settings:
+                    mode: dropNN
+                type: reduce
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 10
+                        type: gt
+                expression: B
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          annotations:
+            description: 'Item 510. More than 10 distinct source addresses were dropped by "Region Blocking (logged) - Internal in" (External to Internal, Connection State New, which is where the port forwards are hit) in the last hour. Baseline 2026-11-09 to 2026-11-23: never more than 3 in any hour, so this is a real surge (a scan or a campaign against a published service), not background. "Region Blocking - Gateway in" is not logged by design (Homelab Region Blocking Policy rule 3). Read the drops in Explore (loki): {hostname="unifi-dm01"} |= "Region Blocking (logged) - Internal i"; DST and DPT name the targeted service.'
+            summary: 'unifi-dm01: {{ $values.B.Value }} distinct blocked-region sources hit the internal network in an hour'
           labels:
             area: security
             severity: warning
