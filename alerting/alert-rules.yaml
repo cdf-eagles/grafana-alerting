@@ -4918,6 +4918,164 @@ groups:
                 - alertname
                 - grafana_folder
                 - instance
+        - uid: cg546bzwogzk0a
+          title: ResticMimirCopyFailed
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: cei7lwvco16o0b
+              model:
+                editorMode: code
+                expr: last_over_time(restic_mimir_backup_last_ok[15m])
+                instant: true
+                intervalMs: 1000
+                legendFormat: __auto
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: C
+              queryType: expression
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 1
+                        type: lt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - C
+                      reducer:
+                        type: last
+                datasource:
+                    type: __expr__
+                    uid: __expr__
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: Alerting
+          execErrState: Error
+          annotations:
+            description: 'The last weekly run of the Mimir copy (/usr/local/bin/restic-mimir-backup.sh, Sundays 02:10 soundwave local time, US Central) on {{ $labels.instance }} failed, so no new copy of mimir-blocks reached shockwave; the failed run also posted to ntfy. On soundwave: cat /var/tmp/node_exporter/restic_mimir_backup.prom; check that shockwave''s rclone restic server is reachable over Tailscale and External Mirror is mounted. After the cause is fixed: sudo /usr/local/bin/restic-mimir-backup.sh. No data means the textfile metric is missing, treated as alerting.'
+            summary: Restic copy of mimir-blocks to shockwave failed on {{ $labels.instance }}
+          labels:
+            severity: critical
+          isPaused: false
+          notification_settings:
+            receiver: NTFY
+        - uid: eg546c88orym8d
+          title: ResticMimirCopyStale
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: cei7lwvco16o0b
+              model:
+                editorMode: code
+                expr: time() - last_over_time(restic_mimir_backup_last_success_timestamp_seconds[15m])
+                instant: true
+                intervalMs: 1000
+                legendFormat: __auto
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: C
+              queryType: expression
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 691200
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - C
+                      reducer:
+                        type: last
+                datasource:
+                    type: __expr__
+                    uid: __expr__
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: Alerting
+          execErrState: Error
+          for: 15m
+          annotations:
+            description: 'restic_mimir_backup_last_success_timestamp_seconds is {{ humanizeDuration $values.A.Value }} old, against an 8-day limit; the Mimir copy (/usr/local/bin/restic-mimir-backup.sh) on soundwave runs weekly, Sundays 02:10 soundwave local time (US Central). On soundwave: cat /var/tmp/node_exporter/restic_mimir_backup.prom; check that shockwave''s rclone restic server is reachable over Tailscale and External Mirror is mounted; sudo /usr/local/bin/restic-mimir-backup.sh to run it by hand. No data means the metric is missing or soundwave''s node exporter is not scraped, treated as alerting.'
+            summary: No successful Mimir copy to shockwave on {{ $labels.instance }} for over 8 days
+          labels:
+            severity: warning
+          isPaused: false
+          notification_settings:
+            receiver: NTFY
+        - uid: cg546ch5aqscgd
+          title: ResticMimirPruneStopped
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: cei7lwvco16o0b
+              model:
+                editorMode: code
+                expr: last_over_time(restic_mimir_backup_snapshot_count[15m])
+                instant: true
+                intervalMs: 1000
+                legendFormat: __auto
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: C
+              queryType: expression
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 10
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - C
+                      reducer:
+                        type: last
+                datasource:
+                    type: __expr__
+                    uid: __expr__
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          for: 15m
+          annotations:
+            description: 'restic_mimir_backup_snapshot_count is {{ $values.A.Value }}, above 10: shockwave keeps 4 weekly and 6 monthly snapshots and its weekly forget and prune (LaunchAgent, Wednesdays 03:40) is not removing old ones; shockwave writes no metrics of its own, so this count, read at soundwave''s Sunday run, is the only signal. On shockwave: check the forget and prune LaunchAgent and that External Mirror is mounted (the job refuses to run otherwise). No data is treated as OK because the Failed and Stale rules already cover a copy that stopped reporting.'
+            summary: The Mimir copy on shockwave holds {{ $values.A.Value }} snapshots, so its prune has stopped
+          labels:
+            severity: warning
+          isPaused: false
+          notification_settings:
+            receiver: NTFY
         - uid: deoh3et5hsbuof
           title: MemoryOverThreshhold-Linux-Critical
           condition: C
