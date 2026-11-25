@@ -1,7 +1,7 @@
 #!/bin/sh
 # Invariants of the Grafana export that a linter cannot express. They repeat
-# what the writer (grafana-alert-export, soundwave.sleem.net's
-# container_grafana_alert_export role) refuses to push, so a hand edit the
+# what the writer (grafana-alert-export, the container_grafana_alert_export
+# role in infrastructure's sleem/ root) refuses to push, so a hand edit the
 # next export would refuse fails here too.
 #
 #   sh scripts/check-export.sh

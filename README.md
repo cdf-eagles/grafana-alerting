@@ -10,7 +10,8 @@ hand.
 ## What writes here
 
 `grafana-alert-push.timer` on podman01, hourly, deployed by the
-`container_grafana_alert_export` role in `soundwave.sleem.net`:
+`container_grafana_alert_export` role in the `sleem/` root of the
+`infrastructure` repository:
 
 1. `grafana-alert-export` (curl) reads Grafana's provisioning export API and
    checks it: every request must succeed, at least one rule must exist, and
